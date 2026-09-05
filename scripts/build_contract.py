@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parent.parent / 'docs'
+OUT = Path(__file__).resolve().parent.parent / '.specs' / 'contracts'
 
 
 def ref(name):
@@ -259,5 +259,5 @@ contract = {
         'refreshCookie': {'type': 'apiKey', 'in': 'cookie', 'name': '__Secure-refresh', 'description': 'Token opaco rotativo, sessão absoluta de 30 dias; exige antiforgery.'}},
         'schemas': schemas},
 }
-(OUT / 'openapi.json').write_text(json.dumps(contract, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+(OUT / 'openapi.json').write_text(json.dumps(contract, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
 print(f'Contrato gerado: {len(paths)} caminhos; {sum(len(p) for p in paths.values())} operações; {len(schemas)} schemas.')
