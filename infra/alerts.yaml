@@ -1,0 +1,16 @@
+groups:
+  - name: foundation
+    rules:
+      - alert: TelemetryUnavailable
+        expr: up{job="collector"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Collector indisponível; investigar exportação sem interromper a aplicação.
+      - alert: LogExportFailed
+        expr: increase(otelcol_exporter_send_failed_log_records_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Falha de exportação de logs; verificar Loki e capacidade da fila.

@@ -1,0 +1,11 @@
+<Solution>
+<Project Path="src/Shortener.Domain/Shortener.Domain.csproj" />
+<Project Path="src/Shortener.Application/Shortener.Application.csproj" />
+<Project Path="src/Shortener.Infrastructure/Shortener.Infrastructure.csproj" />
+<Project Path="src/Shortener.ServiceDefaults/Shortener.ServiceDefaults.csproj" />
+<Project Path="src/Shortener.Api/Shortener.Api.csproj" />
+<Project Path="src/Shortener.Redirector/Shortener.Redirector.csproj" />
+<Project Path="src/Shortener.Worker/Shortener.Worker.csproj" />
+<Project Path="src/Shortener.Jobs/Shortener.Jobs.csproj" />
+<Project Path="tests/Shortener.Foundation.Tests/Shortener.Foundation.Tests.csproj" />
+</Solution>

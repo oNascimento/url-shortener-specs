@@ -1,0 +1,90 @@
+name: shortener
+x-app: &app
+  restart: unless-stopped
+  environment: &env
+    ASPNETCORE_ENVIRONMENT: Development
+    ConnectionStrings__Primary: Host=postgres;Database=shortener;Username=shortener;Password=${POSTGRES_PASSWORD:?Run bootstrap};GSS Encryption Mode=Disable
+    ConnectionStrings__Registry: Host=registry;Database=registry;Username=registry;Password=${REGISTRY_PASSWORD:?Run bootstrap};GSS Encryption Mode=Disable
+    Messaging__Host: rabbitmq
+    Email__Host: mailpit
+    Origins__Management: https://localhost
+    Origins__Short: https://s.localhost
+    Telemetry__Endpoint: http://collector:4317
+    OTEL_BLRP_MAX_QUEUE_SIZE: 2048
+    OTEL_BLRP_MAX_EXPORT_BATCH_SIZE: 512
+    OTEL_BLRP_SCHEDULE_DELAY: 1000
+    OTEL_BLRP_EXPORT_TIMEOUT: 1000
+    OTEL_METRIC_EXPORT_INTERVAL: 5000
+    Build__Version: ${BUILD_VERSION:-development}
+  depends_on:
+    postgres: {condition: service_healthy}
+    registry: {condition: service_healthy}
+    rabbitmq: {condition: service_healthy}
+    mailpit: {condition: service_healthy}
+services:
+  postgres:
+    image: postgres:17.6
+    environment: {POSTGRES_DB: shortener, POSTGRES_USER: shortener, POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?Run bootstrap}'}
+    volumes: [postgres:/var/lib/postgresql/data]
+    healthcheck: {test: ['CMD-SHELL', 'pg_isready -U shortener'], interval: 2s, timeout: 2s, retries: 30}
+  registry:
+    image: postgres:17.6
+    environment: {POSTGRES_DB: registry, POSTGRES_USER: registry, POSTGRES_PASSWORD: '${REGISTRY_PASSWORD:?Run bootstrap}'}
+    volumes: [registry:/var/lib/postgresql/data, './infra/registry.sql:/docker-entrypoint-initdb.d/registry.sql:ro']
+    healthcheck: {test: ['CMD-SHELL', 'pg_isready -U registry -d registry'], interval: 2s, timeout: 2s, retries: 30}
+  rabbitmq:
+    image: rabbitmq:4.1.4-management
+    environment: {RABBITMQ_DEFAULT_USER: shortener, RABBITMQ_DEFAULT_PASS: '${RABBITMQ_PASSWORD:?Run bootstrap}'}
+    volumes: [rabbitmq:/var/lib/rabbitmq]
+    healthcheck: {test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping'], interval: 5s, timeout: 5s, retries: 20}
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    ports: ['127.0.0.1:8025:8025']
+    healthcheck: {test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:8025/api/v1/info'], interval: 5s, timeout: 3s, retries: 20}
+  api:
+    <<: *app
+    build: {context: ., args: {SERVICE: Api}}
+  redirector:
+    <<: *app
+    build: {context: ., args: {SERVICE: Redirector}}
+  worker:
+    <<: *app
+    build: {context: ., args: {SERVICE: Worker}}
+  jobs:
+    <<: *app
+    build: {context: ., args: {SERVICE: Jobs}}
+  web:
+    build: {context: ., dockerfile: web/Dockerfile}
+  proxy:
+    image: caddy:2.10.2-alpine
+    ports: ['127.0.0.1:443:443']
+    volumes: ['./infra/Caddyfile:/etc/caddy/Caddyfile:ro', 'caddy:/data']
+    depends_on: [api, redirector, web]
+  collector:
+    image: otel/opentelemetry-collector-contrib:0.134.1
+    ports: ['127.0.0.1:4317:4317']
+    command: ['--config=/etc/otelcol/config.yaml']
+    volumes: ['./infra/otel-collector.yaml:/etc/otelcol/config.yaml:ro']
+  loki:
+    image: grafana/loki:3.5.5
+    ports: ['127.0.0.1:3100:3100']
+    command: ['-config.file=/etc/loki/local-config.yaml']
+    volumes: ['./infra/loki.yaml:/etc/loki/local-config.yaml:ro', 'loki:/loki']
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    ports: ['127.0.0.1:9090:9090']
+    command: ['--config.file=/etc/prometheus/prometheus.yaml', '--storage.tsdb.retention.time=90d']
+    volumes: ['./infra/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro', './infra/alerts.yaml:/etc/prometheus/alerts.yaml:ro', 'prometheus:/prometheus']
+  grafana:
+    image: grafana/grafana:12.1.1
+    ports: ['127.0.0.1:3000:3000']
+    environment: {GF_SECURITY_ADMIN_PASSWORD: '${GRAFANA_PASSWORD:?Run bootstrap}'}
+    volumes: ['./infra/grafana/provisioning:/etc/grafana/provisioning:ro', './infra/grafana/dashboards:/var/lib/grafana/dashboards:ro', 'grafana:/var/lib/grafana']
+volumes:
+  postgres:
+  registry:
+  rabbitmq:
+  caddy:
+  loki:
+  prometheus:
+  grafana:

@@ -1,3 +1,14 @@
 __pycache__/
 *.pyc
 .venv/
+.tools/
+.env
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/TestResults/
+artifacts/
+web/playwright-report/
+web/test-results/
+*.tsbuildinfo
