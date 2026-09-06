@@ -18,6 +18,9 @@ x-app: &app
     Build__Version: ${BUILD_VERSION:-development}
   depends_on:
     postgres: {condition: service_healthy}
+    registry: {condition: service_healthy}
+    rabbitmq: {condition: service_healthy}
+    mailpit: {condition: service_healthy}
 services:
   postgres:
     image: postgres:17.6
@@ -28,13 +31,16 @@ services:
     image: postgres:17.6
     environment: {POSTGRES_DB: registry, POSTGRES_USER: registry, POSTGRES_PASSWORD: '${REGISTRY_PASSWORD:?Run bootstrap}'}
     volumes: [registry:/var/lib/postgresql/data, './infra/registry.sql:/docker-entrypoint-initdb.d/registry.sql:ro']
+    healthcheck: {test: ['CMD-SHELL', 'pg_isready -U registry -d registry'], interval: 2s, timeout: 2s, retries: 30}
   rabbitmq:
     image: rabbitmq:4.1.4-management
     environment: {RABBITMQ_DEFAULT_USER: shortener, RABBITMQ_DEFAULT_PASS: '${RABBITMQ_PASSWORD:?Run bootstrap}'}
     volumes: [rabbitmq:/var/lib/rabbitmq]
+    healthcheck: {test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping'], interval: 5s, timeout: 5s, retries: 20}
   mailpit:
     image: axllent/mailpit:v1.27.8
     ports: ['127.0.0.1:8025:8025']
+    healthcheck: {test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:8025/api/v1/info'], interval: 5s, timeout: 3s, retries: 20}
   api:
     <<: *app
     build: {context: ., args: {SERVICE: Api}}

@@ -16,7 +16,7 @@ O bootstrap cria `.env` uma única vez com senhas aleatórias. A senha administr
 
 A interface fica em `https://localhost`; domínio curto em `https://s.localhost`; Grafana em `http://localhost:3000` (usuário `admin`); e-mails de teste em `http://localhost:8025`. A CA local do Caddy precisa ser confiada pelo navegador para validar HTTPS e cookies Secure nas próximas funcionalidades. Exportar com `docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt artifacts/local-root.crt` após criar `artifacts/`; importar somente essa CA de desenvolvimento no ambiente local. Não usar os certificados locais em produção.
 
-Não há endpoints de negócio nesta primeira entrega. A interface informa essa condição. Health checks `/health/live` e `/health/ready` só são acessíveis dentro da rede Compose; o proxy os bloqueia. Readiness exige a migração inicial aplicada. Banco principal e registro externo têm volumes distintos; restaurar o banco principal nunca restaura o registro externo para trás.
+Não há endpoints de negócio nesta primeira entrega. A interface informa essa condição. Health checks `/health/live` e `/health/ready` só são acessíveis dentro da rede Compose; o proxy os bloqueia. Readiness exige a migração inicial e a disponibilidade de PostgreSQL, registro externo, RabbitMQ e Mailpit; telemetria permanece best-effort. Banco principal e registro externo têm volumes distintos; restaurar o banco principal nunca restaura o registro externo para trás.
 
 ## Verificação
 

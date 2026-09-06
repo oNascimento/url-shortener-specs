@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Net.Sockets;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -10,9 +11,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Npgsql;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using Shortener.Application;
 using Shortener.Domain;
 using Shortener.Infrastructure;
 
@@ -56,11 +60,21 @@ public static class ServiceSetup
         builder.Services.AddOpenTelemetry().WithMetrics(metrics => metrics.SetResourceBuilder(resource).AddMeter(MeterName)
             .AddView("shortener.request.duration", new ExplicitBucketHistogramConfiguration { Boundaries = [0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1, 2, 5] })
             .AddOtlpExporter(exporter => { exporter.Endpoint = new Uri(builder.Configuration["Telemetry:Endpoint"]!); exporter.TimeoutMilliseconds = 1000; }));
-        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<TimeProvider>(_ => TimeProvider.System);
         builder.Services.AddSingleton(new ServiceIdentity(service, builder.Environment.EnvironmentName, builder.Configuration["Build:Version"] ?? "development"));
         builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Primary")));
+        builder.Services.AddSingleton<IRecoveryRegistry>(services =>
+            new PostgresRecoveryRegistry(builder.Configuration.GetConnectionString("Registry")!));
         builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new DecimalInt64Converter()));
-        builder.Services.AddHealthChecks();
+        var primary = builder.Configuration.GetConnectionString("Primary")!;
+        var registry = builder.Configuration.GetConnectionString("Registry")!;
+        var messagingHost = builder.Configuration["Messaging:Host"]!;
+        var emailHost = builder.Configuration["Email:Host"]!;
+        builder.Services.AddHealthChecks()
+            .AddCheck("primary", new DelegateHealthCheck(cancellationToken => CheckDatabaseAsync(primary, "schema_metadata", cancellationToken)), tags: ["ready"])
+            .AddCheck("registry", new DelegateHealthCheck(cancellationToken => CheckDatabaseAsync(registry, "id_reservations", cancellationToken)), tags: ["ready"])
+            .AddCheck("messaging", new DelegateHealthCheck(cancellationToken => CheckTcpAsync(messagingHost, 5672, cancellationToken)), tags: ["ready"])
+            .AddCheck("email", new DelegateHealthCheck(cancellationToken => CheckTcpAsync(emailHost, 1025, cancellationToken)), tags: ["ready"]);
     }
 
     public static void UseFoundation(this WebApplication app)
@@ -103,12 +117,66 @@ public static class ServiceSetup
             }
         });
         app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
-        app.MapGet("/health/ready", async (AppDbContext db, CancellationToken token) =>
+        app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
         {
-            try { return await db.Database.SqlQueryRaw<int>("SELECT id AS \"Value\" FROM schema_metadata WHERE id = 1").SingleAsync(token) == 1 ? Results.Ok(new { status = "ready" }) : Results.StatusCode(503); }
-            catch { return Results.StatusCode(503); }
+            Predicate = registration => registration.Tags.Contains("ready"),
+            ResultStatusCodes =
+            {
+                [HealthStatus.Healthy] = StatusCodes.Status200OK,
+                [HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable,
+                [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
+            },
+            ResponseWriter = async (context, report) =>
+            {
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { status = report.Status == HealthStatus.Healthy ? "ready" : "unavailable" }));
+            }
         });
         app.Lifetime.ApplicationStarted.Register(() => logger.LogInformation(new EventId(1000, "ServiceStarted"), "Service {service} started in {environment} version {version} with outcome {outcome}", identity.Service, identity.Environment, identity.Version, "started"));
+    }
+
+    private static async Task<HealthCheckResult> CheckDatabaseAsync(string connectionString, string table, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand($"SELECT 1 FROM {table} LIMIT 1", connection);
+            return await command.ExecuteScalarAsync(cancellationToken) is not null
+                ? HealthCheckResult.Healthy()
+                : HealthCheckResult.Unhealthy("dependency unavailable");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return HealthCheckResult.Unhealthy("dependency unavailable");
+        }
+        catch
+        {
+            return HealthCheckResult.Unhealthy("dependency unavailable");
+        }
+    }
+
+    private static async Task<HealthCheckResult> CheckTcpAsync(string host, int port, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var client = new TcpClient();
+            await client.ConnectAsync(host, port, cancellationToken);
+            return HealthCheckResult.Healthy();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return HealthCheckResult.Unhealthy("dependency unavailable");
+        }
+        catch
+        {
+            return HealthCheckResult.Unhealthy("dependency unavailable");
+        }
+    }
+
+    private sealed class DelegateHealthCheck(Func<CancellationToken, Task<HealthCheckResult>> check) : IHealthCheck
+    {
+        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken) => check(cancellationToken);
     }
 }
 public sealed record ServiceIdentity(string Service, string Environment, string Version);

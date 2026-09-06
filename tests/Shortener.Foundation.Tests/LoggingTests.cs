@@ -16,6 +16,28 @@ namespace Shortener.Foundation.Tests;
 public class LoggingTests
 {
     [Fact]
+    public void TimeProviderCanBeReplacedByTheHost()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:Primary"] = "Host=localhost;Database=test",
+            ["ConnectionStrings:Registry"] = "Host=localhost;Database=registry",
+            ["Messaging:Host"] = "localhost",
+            ["Email:Host"] = "localhost",
+            ["Origins:Management"] = "https://localhost",
+            ["Origins:Short"] = "https://s.localhost",
+            ["Telemetry:Endpoint"] = "http://127.0.0.1:1"
+        });
+        builder.AddFoundation("shortener-test");
+        var fake = new FixedTimeProvider(new DateTimeOffset(2030, 1, 2, 3, 4, 5, TimeSpan.Zero));
+        builder.Services.AddSingleton<TimeProvider>(fake);
+
+        using var app = builder.Build();
+        Assert.Same(fake, app.Services.GetRequiredService<TimeProvider>());
+    }
+
+    [Fact]
     public void MissingConfigurationFailsBeforeStartup()
     {
         var builder = WebApplication.CreateBuilder();
@@ -47,6 +69,11 @@ public class LoggingTests
         app.MapGet("/failure", (Func<string>)(() => throw new InvalidOperationException("sentinel-password sentinel-token person@example.test https://private.test 192.0.2.1")));
         await app.StartAsync();
         var client = app.GetTestClient();
+        var live = await client.GetAsync("/health/live");
+        Assert.Equal(HttpStatusCode.OK, live.StatusCode);
+        var ready = await client.GetAsync("/health/ready");
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, ready.StatusCode);
+        Assert.Equal("{\"status\":\"unavailable\"}", await ready.Content.ReadAsStringAsync());
         client.DefaultRequestHeaders.Add("Authorization", "Bearer sentinel-token");
         var timer = Stopwatch.StartNew();
         var response = await client.GetAsync("/failure?secret=sentinel-query");
@@ -72,5 +99,10 @@ public class LoggingTests
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
         public bool IsEnabled(LogLevel logLevel) => true;
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => messages.Enqueue(formatter(state, exception));
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
     }
 }
