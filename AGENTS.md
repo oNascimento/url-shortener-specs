@@ -2,10 +2,279 @@
 
 Otimize o uso de contexto e tokens sem comprometer a correção da solução.
 
+## RTK — prioridade para economia de tokens
+
+O ambiente possui o **RTK (rtk-ai/rtk)** instalado.
+
+O RTK deve ser utilizado sempre que possível para reduzir a quantidade de saída enviada ao contexto do modelo.
+
+### Regra principal
+
+* Sempre prefira comandos através do `rtk` quando houver suporte para o comando ou fluxo necessário.
+* Antes de executar diretamente um comando que possa gerar saída significativa, verifique se existe uma alternativa equivalente via `rtk`.
+* Priorize `rtk` especialmente para:
+
+  * leitura de arquivos;
+  * busca de arquivos;
+  * busca de texto;
+  * Git;
+  * testes;
+  * lint;
+  * TypeScript;
+  * package managers;
+  * Docker;
+  * Kubernetes;
+  * logs;
+  * JSON;
+  * comandos com saída extensa.
+* Não utilize o comando original diretamente quando o `rtk` conseguir fornecer as informações necessárias.
+* Utilize o comando original apenas quando:
+
+  * o RTK não oferecer suporte adequado;
+  * a saída compactada esconder uma informação necessária;
+  * houver incompatibilidade;
+  * for necessário investigar um problema específico que exija a saída completa.
+
+### Exploração de arquivos com RTK
+
+Prefira:
+
+```bash
+rtk ls .
+```
+
+em vez de:
+
+```bash
+ls
+tree
+```
+
+Para localizar arquivos, prefira:
+
+```bash
+rtk find "<padrão>" .
+```
+
+Para pesquisar código, prefira:
+
+```bash
+rtk grep "<padrão>" .
+```
+
+Para leitura de arquivos, prefira:
+
+```bash
+rtk read <arquivo>
+```
+
+Quando apenas estrutura, assinaturas ou visão geral forem necessárias, utilize modos mais compactos quando disponíveis:
+
+```bash
+rtk read <arquivo> -l aggressive
+```
+
+ou:
+
+```bash
+rtk smart <arquivo>
+```
+
+Não carregue o arquivo completo se a visão compactada for suficiente.
+
+### Git com RTK
+
+Sempre que possível, prefira:
+
+```bash
+rtk git status
+rtk git diff
+rtk git log -n 10
+rtk git add
+rtk git commit
+rtk git push
+rtk git pull
+```
+
+Evite executar os equivalentes `git` diretamente quando a saída compactada do RTK for suficiente.
+
+### Testes com RTK
+
+Para ferramentas suportadas diretamente, utilize o wrapper específico.
+
+Exemplos:
+
+```bash
+rtk jest
+rtk vitest
+rtk playwright test
+```
+
+Para runners sem integração específica, utilize preferencialmente o wrapper genérico:
+
+```bash
+rtk test <comando>
+```
+
+O objetivo é receber principalmente falhas e informações relevantes em vez de toda a saída dos testes.
+
+### Erros de comandos
+
+Quando o objetivo principal for identificar erros, prefira:
+
+```bash
+rtk err <comando>
+```
+
+em vez de executar o comando bruto e carregar toda a saída.
+
+Exemplos:
+
+```bash
+rtk err dotnet build
+rtk err dotnet restore
+rtk err npm run build
+```
+
+### Comandos .NET com RTK
+
+Quando não houver wrapper específico para `.NET`, utilize os wrappers genéricos do RTK sempre que forem adequados.
+
+Para testes:
+
+```bash
+rtk test dotnet test <projeto>
+```
+
+Para builds quando o interesse principal forem erros:
+
+```bash
+rtk err dotnet build <projeto>
+```
+
+Para restore:
+
+```bash
+rtk err dotnet restore <projeto>
+```
+
+Não force o uso de RTK quando for necessária uma saída específica do `dotnet` que tenha sido removida pela compactação.
+
+Nesse caso:
+
+1. tente primeiro a saída compactada;
+2. identifique qual informação está faltando;
+3. consulte somente a saída completa necessária;
+4. evite repetir desnecessariamente o comando inteiro.
+
+### React, JavaScript e TypeScript com RTK
+
+Para React e TypeScript, priorize:
+
+```bash
+rtk tsc
+rtk lint
+rtk prettier --check .
+rtk jest
+rtk vitest
+rtk playwright test
+```
+
+Quando aplicável, utilize:
+
+```bash
+rtk pnpm list
+```
+
+Para builds Next.js:
+
+```bash
+rtk next build
+```
+
+Para outros comandos NPM, PNPM ou Yarn que possam gerar muita saída, considere:
+
+```bash
+rtk err <comando>
+rtk test <comando>
+rtk summary <comando>
+```
+
+conforme o tipo de operação.
+
+### Docker e infraestrutura
+
+Sempre que possível, prefira:
+
+```bash
+rtk docker ps
+rtk docker images
+rtk docker logs <container>
+rtk docker compose ps
+```
+
+Para Kubernetes, prefira:
+
+```bash
+rtk kubectl pods
+rtk kubectl logs <pod>
+rtk kubectl services
+```
+
+Evite carregar logs brutos extensos no contexto.
+
+### Logs e dados extensos
+
+Para logs:
+
+```bash
+rtk log <arquivo>
+```
+
+Para JSON:
+
+```bash
+rtk json <arquivo>
+```
+
+Para comandos extensos sem filtro específico:
+
+```bash
+rtk summary <comando>
+```
+
+Se nenhuma otimização específica estiver disponível e ainda for útil rastrear o comando através do RTK:
+
+```bash
+rtk proxy <comando>
+```
+
+### Quando o RTK não for suficiente
+
+Se uma saída compactada esconder informações necessárias:
+
+* Não abandone imediatamente o RTK para todo o restante da tarefa.
+* Utilize saída completa apenas para aquele ponto específico.
+* Volte a utilizar RTK nos comandos seguintes.
+* Evite executar novamente comandos caros apenas para recuperar algumas linhas.
+* Quando disponível, utilize o arquivo de saída completa salvo pelo próprio RTK em falhas.
+
+### Monitoramento da economia
+
+Quando for relevante avaliar desperdício de contexto, podem ser utilizados:
+
+```bash
+rtk gain
+rtk discover
+```
+
+Não execute esses comandos rotineiramente durante cada tarefa. Utilize-os apenas para diagnóstico ou otimização do fluxo.
+
 ## Exploração do repositório
 
 * Não analise o repositório inteiro, a menos que seja estritamente necessário.
-* Antes de abrir arquivos, localize o código relevante usando buscas como `rg`, `find` ou busca por símbolos.
+* Antes de abrir arquivos, localize o código relevante.
+* Priorize `rtk grep`, `rtk find`, `rtk ls`, `rtk read` e `rtk smart`.
 * Abra apenas arquivos que provavelmente estejam relacionados à tarefa.
 * Não reabra arquivos que já foram analisados e não foram alterados.
 * Prefira trechos específicos, símbolos, métodos e intervalos de linhas em vez de carregar arquivos completos.
@@ -23,23 +292,27 @@ Otimize o uso de contexto e tokens sem comprometer a correção da solução.
 
 ## Uso de comandos
 
+* Use RTK como primeira opção sempre que ele suportar a operação necessária.
 * Evite comandos que produzam grandes volumes de saída.
 * Filtre logs e resultados antes de analisá-los.
-* Quando possível, utilize `rg`, `grep`, `head`, `tail` ou filtros equivalentes para reduzir a saída.
 * Durante a implementação, execute testes direcionados ao código alterado.
 * Não execute toda a suíte de testes repetidamente durante a investigação.
 * Execute testes mais amplos apenas quando houver necessidade ou antes da conclusão da tarefa.
-* Quando um comando falhar, analise primeiro apenas os erros relevantes e as linhas próximas ao erro.
+* Quando um comando falhar, analise primeiro apenas os erros relevantes.
+* Prefira `rtk err` quando estiver interessado principalmente nos erros.
+* Prefira `rtk test` para runners sem suporte específico.
 * Não carregue logs completos quando algumas linhas forem suficientes para identificar o problema.
 
 ## Projetos .NET
 
 * Prefira executar testes do projeto ou conjunto de testes diretamente relacionado à alteração.
-* Evite executar `dotnet test` para toda a solução durante cada iteração.
+* Prefira `rtk test dotnet test <projeto>` quando a saída compactada for suficiente.
+* Evite executar `dotnet test` para toda a solution durante cada iteração.
 * Utilize filtros de testes quando possível.
-* Evite builds completos da solução se apenas um projeto foi alterado.
-* Prefira `dotnet build` no projeto afetado antes de executar um build completo da solução.
-* Ao analisar erros de compilação, concentre-se nos primeiros erros relevantes em vez de processar toda a saída.
+* Evite builds completos da solution se apenas um projeto foi alterado.
+* Prefira validar primeiro o projeto afetado.
+* Para erros de build, prefira `rtk err dotnet build <projeto>`.
+* Ao analisar erros de compilação, concentre-se nos primeiros erros relevantes.
 * Não restaure pacotes repetidamente sem necessidade.
 * Não analise todos os projetos da solution se a alteração estiver isolada em uma API, biblioteca ou worker específico.
 * Ao investigar DI, configurações ou middleware, abra somente os arquivos diretamente relacionados ao fluxo em questão.
@@ -48,6 +321,8 @@ Otimize o uso de contexto e tokens sem comprometer a correção da solução.
 
 * Não analise toda a árvore de componentes sem necessidade.
 * Localize primeiro o componente, hook, contexto, store, serviço ou rota diretamente relacionada à tarefa.
+* Utilize `rtk grep` e `rtk find` para localizar componentes, hooks e referências.
+* Utilize `rtk read` ou `rtk smart` antes de carregar arquivos grandes por completo.
 * Ao investigar um componente, analise inicialmente apenas:
 
   * o próprio componente;
@@ -77,15 +352,18 @@ Otimize o uso de contexto e tokens sem comprometer a correção da solução.
 
 * Prefira utilizar tipos e interfaces existentes.
 * Antes de criar novos tipos, procure primeiro no módulo diretamente relacionado.
-* Não faça uma busca global extensa por tipos se uma busca específica por nome for suficiente.
+* Utilize `rtk grep` para localizar tipos e interfaces.
+* Não faça uma busca global extensa quando uma busca específica por nome for suficiente.
 * Evite `any` quando o tipo puder ser determinado facilmente a partir do código existente.
 * Não altere tipos compartilhados sem avaliar os usos diretamente afetados.
+* Para validação TypeScript, prefira `rtk tsc`.
 * Não execute verificações de TypeScript em todo o monorepo quando apenas um pacote ou aplicação foi alterado.
 
 ### Testes React
 
 * Execute primeiro os testes relacionados ao componente ou módulo alterado.
-* Com Jest ou Vitest, utilize filtros por arquivo, nome do teste ou projeto sempre que possível.
+* Prefira `rtk jest` ou `rtk vitest` quando aplicável.
+* Utilize filtros por arquivo, nome do teste ou projeto sempre que possível.
 * Não execute toda a suíte de testes após cada pequena alteração.
 * Com React Testing Library, priorize validar o comportamento afetado pela mudança.
 * Não atualize snapshots automaticamente sem verificar se a alteração é realmente esperada.
@@ -93,13 +371,15 @@ Otimize o uso de contexto e tokens sem comprometer a correção da solução.
 
 ### Build, lint e formatação
 
-* Não execute `npm run build`, `yarn build` ou `pnpm build` completo após cada alteração.
+* Não execute builds completos após cada alteração.
 * Prefira verificações direcionadas quando o projeto permitir.
+* Utilize `rtk lint` quando aplicável.
+* Utilize `rtk tsc` para validações TypeScript.
+* Utilize `rtk prettier --check` quando uma verificação de formatação for necessária.
 * Evite executar lint em todo o repositório se somente poucos arquivos foram alterados.
-* Utilize lint apenas nos arquivos afetados quando possível.
 * Não execute formatadores sobre o projeto inteiro.
 * Não altere arquivos somente devido a diferenças de formatação fora do escopo da tarefa.
-* Evite executar `npm install`, `yarn install` ou `pnpm install` se as dependências já estiverem disponíveis.
+* Evite reinstalar dependências se já estiverem disponíveis.
 
 ### Dependências frontend
 
@@ -153,22 +433,24 @@ Otimize o uso de contexto e tokens sem comprometer a correção da solução.
 Para tarefas grandes, siga esta ordem:
 
 1. Identifique a menor área possível do sistema relacionada ao problema.
-2. Localize os arquivos e símbolos relevantes.
+2. Localize os arquivos e símbolos relevantes utilizando preferencialmente RTK.
 3. Investigue somente essa área inicialmente.
 4. Formule uma hipótese sobre a causa ou solução.
 5. Faça a menor alteração viável.
-6. Execute validações direcionadas.
+6. Execute validações direcionadas, preferencialmente através do RTK.
 7. Expanda a investigação somente se os resultados indicarem necessidade.
 8. Execute validações mais amplas apenas ao final, quando apropriado.
 
 ## Gerenciamento de contexto
 
+* RTK é a opção preferencial para comandos de terminal quando houver suporte.
 * Evite repetir informações que já estejam disponíveis no contexto atual.
 * Não releia arquivos sem necessidade.
 * Não carregue arquivos grandes por completo quando apenas uma parte for necessária.
 * Resuma descobertas intermediárias em vez de manter grandes volumes de dados brutos no contexto.
 * Preserve apenas informações necessárias para continuar a tarefa.
 * Quando uma investigação produzir muita saída, retenha apenas conclusões, arquivos relevantes e evidências necessárias.
+* Caso precise consultar uma saída bruta após usar RTK, consulte somente a parte necessária e depois volte a utilizar os comandos compactados.
 
 ## Prioridade
 
@@ -177,6 +459,7 @@ Sempre priorize, nesta ordem:
 1. Correção.
 2. Alteração mínima.
 3. Validação direcionada.
-4. Baixo uso de contexto.
-5. Baixo uso de tokens.
-6. Expansão da investigação somente quando necessária.
+4. Uso de RTK quando aplicável.
+5. Baixo uso de contexto.
+6. Baixo uso de tokens.
+7. Expansão da investigação somente quando necessária.
