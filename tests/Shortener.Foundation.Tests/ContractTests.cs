@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Shortener.Domain;
 using Shortener.Infrastructure;
 using Testcontainers.PostgreSql;
@@ -27,7 +28,14 @@ public class ContractTests
     {
         await using var postgres = new PostgreSqlBuilder("postgres:17.6").Build();
         await postgres.StartAsync();
-        await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(postgres.GetConnectionString()).Options);
+        var connection = new NpgsqlConnectionStringBuilder(postgres.GetConnectionString())
+        {
+            GssEncryptionMode = GssEncryptionMode.Disable,
+            // Container startup on a busy development machine is not a performance benchmark.
+            Timeout = 60,
+            CommandTimeout = 60
+        };
+        await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connection.ConnectionString).Options);
         await db.Database.MigrateAsync();
         await db.Database.MigrateAsync();
         var value = await db.Database.SqlQueryRaw<long>("SELECT 9007199254740993::bigint AS \"Value\"").SingleAsync();

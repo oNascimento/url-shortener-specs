@@ -12,7 +12,7 @@ Comece pelo [índice de .specs](.specs/README.md). Ele organiza oito funcionalid
 - [Rastreabilidade](.specs/traceability.md)
 - [OpenAPI: 26 operações](.specs/contracts/openapi.json)
 
-O repositório ainda não contém a aplicação. Há 23 requisitos funcionais, 16 critérios de aceitação e 24 cenários de teste documentados; isso não significa que o produto foi implementado ou que os testes foram executados.
+A implementação começa pela fundação dos serviços e do frontend. Consulte [Desenvolvimento local](DEVELOPMENT.md) para infraestrutura, builds, observabilidade e fluxo de PRs. Os endpoints de negócio serão entregues nas funcionalidades seguintes. Há 23 requisitos funcionais, 16 critérios de aceitação e 24 cenários de teste documentados; a matriz de evidências distingue implementação de metas ainda não verificadas.
 
 ## Decisões principais
 
