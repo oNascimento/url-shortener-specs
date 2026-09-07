@@ -9,6 +9,13 @@ x-app: &app
     Email__Host: mailpit
     Origins__Management: https://localhost
     Origins__Short: https://s.localhost
+    Jwt__Issuer: shortener
+    Jwt__Audience: shortener
+    Jwt__KeyId: development-v1
+    Jwt__PrivateKeyPath: /keys/jwt.pem
+    Jwt__GenerateDevelopmentKey: 'true'
+    DataProtection__KeyPath: /keys/data-protection
+    TrustedProxies__0: 172.29.0.10
     Telemetry__Endpoint: http://collector:4317
     OTEL_BLRP_MAX_QUEUE_SIZE: 2048
     OTEL_BLRP_MAX_EXPORT_BATCH_SIZE: 512
@@ -44,6 +51,7 @@ services:
   api:
     <<: *app
     build: {context: ., args: {SERVICE: Api}}
+    volumes: [auth-keys:/keys]
   redirector:
     <<: *app
     build: {context: ., args: {SERVICE: Redirector}}
@@ -57,6 +65,8 @@ services:
     build: {context: ., dockerfile: web/Dockerfile}
   proxy:
     image: caddy:2.10.2-alpine
+    networks:
+      default: {ipv4_address: 172.29.0.10}
     ports: ['127.0.0.1:443:443']
     volumes: ['./infra/Caddyfile:/etc/caddy/Caddyfile:ro', 'caddy:/data']
     depends_on: [api, redirector, web]
@@ -80,7 +90,12 @@ services:
     ports: ['127.0.0.1:3000:3000']
     environment: {GF_SECURITY_ADMIN_PASSWORD: '${GRAFANA_PASSWORD:?Run bootstrap}'}
     volumes: ['./infra/grafana/provisioning:/etc/grafana/provisioning:ro', './infra/grafana/dashboards:/var/lib/grafana/dashboards:ro', 'grafana:/var/lib/grafana']
+networks:
+  default:
+    ipam:
+      config: [{subnet: 172.29.0.0/24}]
 volumes:
+  auth-keys:
   postgres:
   registry:
   rabbitmq:

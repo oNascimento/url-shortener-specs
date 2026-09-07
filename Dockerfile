@@ -9,5 +9,6 @@ ARG SERVICE=Api
 ENV SERVICE_DLL=Shortener.${SERVICE}.dll ASPNETCORE_HTTP_PORTS=8080
 WORKDIR /app
 COPY --from=build /out .
+RUN mkdir -p /keys && chown "$APP_UID" /keys && chmod 700 /keys
 USER $APP_UID
 ENTRYPOINT ["sh", "-c", "exec dotnet $SERVICE_DLL \"$@\"", "--"]

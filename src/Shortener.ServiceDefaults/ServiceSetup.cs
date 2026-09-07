@@ -22,6 +22,10 @@ using Shortener.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.DataProtection;
+using System.Security.Claims;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
 
 namespace Shortener.ServiceDefaults;
 
@@ -68,11 +72,59 @@ public static class ServiceSetup
         builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Primary")));
         builder.Services.AddIdentityCore<ApplicationUser>(options => { options.Password.RequiredLength = 12; options.Password.RequiredUniqueChars = 1; options.Password.RequireDigit = false; options.Password.RequireLowercase = false; options.Password.RequireUppercase = false; options.Password.RequireNonAlphanumeric = false; options.User.RequireUniqueEmail = true; }).AddRoles<IdentityRole<Guid>>().AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
         builder.Services.AddScoped<AuthService>();
+        builder.Services.AddScoped<PostgresRateLimiter>();
+        if (!builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Jwt:GenerateDevelopmentKey"))
+            throw new InvalidOperationException("Development JWT key generation is not allowed outside Development.");
         builder.Services.AddSingleton<JwtIssuer>();
+        var protection = builder.Services.AddDataProtection().SetApplicationName("Shortener");
+        if (builder.Configuration["DataProtection:KeyPath"] is { } keyPath)
+            protection.PersistKeysToFileSystem(new DirectoryInfo(keyPath));
         builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
         builder.Services.AddAntiforgery(o => { o.HeaderName = "X-CSRF-Token"; o.Cookie.Name = "__Secure-antiforgery"; o.Cookie.HttpOnly = true; o.Cookie.SecurePolicy = CookieSecurePolicy.Always; o.Cookie.SameSite = SameSiteMode.Strict; o.Cookie.Path = "/api/v1/auth"; });
-        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o => { o.TokenValidationParameters = new TokenValidationParameters { ValidateIssuer = true, ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "shortener", ValidateAudience = true, ValidAudience = builder.Configuration["Jwt:Audience"] ?? "shortener", ValidateLifetime = true, ClockSkew = TimeSpan.FromSeconds(30), ValidateIssuerSigningKey = true, IssuerSigningKey = JwtIssuer.SigningKey }; });
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+        builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme).Configure<JwtIssuer>((options, issuer) =>
+        {
+            options.MapInboundClaims = false;
+            options.TokenValidationParameters = issuer.ValidationParameters();
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    if (context.Request.Path.StartsWithSegments("/api/v1/auth")) context.NoResult();
+                    return Task.CompletedTask;
+                },
+                OnTokenValidated = async context =>
+                {
+                    var principal = context.Principal!;
+                    if (!Guid.TryParse(principal.FindFirst("sub")?.Value, out var userId)
+                        || !Guid.TryParse(principal.FindFirst("sid")?.Value, out var sessionId)
+                        || !Guid.TryParse(principal.FindFirst("jti")?.Value, out _)
+                        || !long.TryParse(principal.FindFirst("iat")?.Value, out _)
+                        || await context.HttpContext.RequestServices.GetRequiredService<AuthService>().GetUserAsync(userId, sessionId, context.HttpContext.RequestAborted) is not { } user)
+                    {
+                        context.Fail("Invalid session.");
+                        return;
+                    }
+                    var identity = (ClaimsIdentity)principal.Identity!;
+                    foreach (var claim in identity.FindAll("role").ToArray()) identity.RemoveClaim(claim);
+                    identity.AddClaim(new Claim("role", user.Role));
+                },
+                OnChallenge = async context => { context.HandleResponse(); await AuthHttp.WriteProblemAsync(context.HttpContext, 401, "unauthorized"); },
+                OnForbidden = context => AuthHttp.WriteProblemAsync(context.HttpContext, 403, "forbidden")
+            };
+        });
         builder.Services.AddAuthorization();
+        builder.Services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            options.ForwardLimit = 1;
+            options.KnownProxies.Clear();
+            options.KnownIPNetworks.Clear();
+            foreach (var proxy in builder.Configuration.GetSection("TrustedProxies").GetChildren())
+                options.KnownProxies.Add(IPAddress.Parse(proxy.Value!));
+            // Empty trusted lists mean trust all in the framework; preserve deny-by-default.
+            if (options.KnownProxies.Count == 0) options.KnownProxies.Add(IPAddress.None);
+        });
         builder.Services.AddSingleton<IRecoveryRegistry>(services =>
             new PostgresRecoveryRegistry(builder.Configuration.GetConnectionString("Registry")!));
         builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new DecimalInt64Converter()));
@@ -89,20 +141,6 @@ public static class ServiceSetup
 
     public static void UseFoundation(this WebApplication app)
     {
-        app.UseAuthentication();
-        app.UseAuthorization();
-        app.Use(async (context, next) =>
-        {
-            if (context.Request.Method == "POST" && context.Request.Path.StartsWithSegments("/api/v1/auth") && !context.Request.Path.Value!.EndsWith("/csrf", StringComparison.OrdinalIgnoreCase))
-            {
-                var origin = context.Request.Headers.Origin.ToString();
-                var management = context.RequestServices.GetRequiredService<IConfiguration>()["Origins:Management"];
-                if (string.IsNullOrWhiteSpace(origin) || !string.Equals(origin, management, StringComparison.OrdinalIgnoreCase)) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
-                try { await context.RequestServices.GetRequiredService<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().ValidateRequestAsync(context); }
-                catch (Microsoft.AspNetCore.Antiforgery.AntiforgeryValidationException) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
-            }
-            await next(context);
-        });
         var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Shortener.Requests");
         var identity = app.Services.GetRequiredService<ServiceIdentity>();
         app.Use(async (context, next) =>
@@ -124,6 +162,15 @@ public static class ServiceSetup
             {
                 context.Abort();
             }
+            catch (BadHttpRequestException error)
+            {
+                await AuthHttp.WriteProblemAsync(context, error.StatusCode, "invalid_input");
+            }
+            catch (Exception error) when (error is System.Data.Common.DbException or DbUpdateException)
+            {
+                logger.LogError("Database operation unavailable ({type})", error.GetType().Name);
+                await AuthHttp.WriteProblemAsync(context, 503, "service_unavailable");
+            }
             catch (Exception error)
             {
                 // Do not pass exception.Message/ToString: third-party exceptions can embed secrets.
@@ -139,6 +186,15 @@ public static class ServiceSetup
                 Requests.Add(1, tags);
                 Duration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds, tags);
             }
+        });
+        app.UseStatusCodePages(context => AuthHttp.WriteProblemAsync(context.HttpContext, context.HttpContext.Response.StatusCode,
+            context.HttpContext.Response.StatusCode switch { 401 => "unauthorized", 403 => "forbidden", 404 => "not_found", _ => "invalid_input" }));
+        app.UseWhen(context => context.Request.Path.StartsWithSegments("/api/v1"), branch =>
+        {
+            branch.UseForwardedHeaders();
+            branch.UseAuthentication();
+            branch.UseMiddleware<AuthHttp>();
+            branch.UseAuthorization();
         });
         app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
         app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions

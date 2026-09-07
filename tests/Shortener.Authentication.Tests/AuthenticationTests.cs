@@ -108,7 +108,9 @@ public sealed class AuthenticationTests : IAsyncLifetime
     [Fact]
     public void Jwt_contains_required_claims_and_uses_configured_clock()
     {
-        var issuer = new JwtIssuer(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:Issuer"] = "tests", ["Jwt:Audience"] = "tests" }).Build(), clock);
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        using var issuer = new JwtIssuer(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        { ["Jwt:Issuer"] = "tests", ["Jwt:Audience"] = "tests", ["Jwt:KeyId"] = "unit", ["Jwt:PrivateKeyPem"] = rsa.ExportRSAPrivateKeyPem() }).Build(), clock);
         var session = new AuthSession { Id = Guid.NewGuid(), ExpiresAt = clock.GetUtcNow().AddDays(30) };
         var user = new UserResult(Guid.NewGuid(), "person@example.test", true, "user", clock.GetUtcNow());
         var result = issuer.Issue(session, user);
