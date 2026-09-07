@@ -35,4 +35,22 @@ public sealed class RateLimitTests
         Assert.Equal(TimeSpan.FromMinutes(1), rule.Window);
         Assert.NotEqual(rule.Key, AuthRateLimits.ForUser(Guid.NewGuid()).Key);
     }
+
+    [Theory]
+    [InlineData("refresh")]
+    [InlineData("logout")]
+    [InlineData("verify-email")]
+    [InlineData("reset-password")]
+    public void Non_email_operations_do_not_consume_login_or_email_budgets(string operation)
+    {
+        Assert.Empty(AuthRateLimits.ForAuth(operation, "192.0.2.1", null));
+    }
+
+    [Fact]
+    public void Different_ips_have_independent_login_budgets()
+    {
+        var first = Assert.Single(AuthRateLimits.ForAuth("login", "192.0.2.1", null));
+        var second = Assert.Single(AuthRateLimits.ForAuth("login", "192.0.2.2", null));
+        Assert.NotEqual(first.Key, second.Key);
+    }
 }
