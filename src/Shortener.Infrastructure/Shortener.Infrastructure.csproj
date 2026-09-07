@@ -2,4 +2,7 @@
 <ItemGroup>
 <ProjectReference Include="../Shortener.Application/Shortener.Application.csproj" />
 <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
+<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
 </ItemGroup></Project>

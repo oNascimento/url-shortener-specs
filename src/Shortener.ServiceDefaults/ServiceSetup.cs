@@ -19,6 +19,9 @@ using OpenTelemetry.Resources;
 using Shortener.Application;
 using Shortener.Domain;
 using Shortener.Infrastructure;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Shortener.ServiceDefaults;
 
@@ -63,6 +66,13 @@ public static class ServiceSetup
         builder.Services.AddSingleton<TimeProvider>(_ => TimeProvider.System);
         builder.Services.AddSingleton(new ServiceIdentity(service, builder.Environment.EnvironmentName, builder.Configuration["Build:Version"] ?? "development"));
         builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Primary")));
+        builder.Services.AddIdentityCore<ApplicationUser>(options => { options.Password.RequiredLength = 12; options.Password.RequiredUniqueChars = 1; options.Password.RequireDigit = false; options.Password.RequireLowercase = false; options.Password.RequireUppercase = false; options.Password.RequireNonAlphanumeric = false; options.User.RequireUniqueEmail = true; }).AddRoles<IdentityRole<Guid>>().AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
+        builder.Services.AddScoped<AuthService>();
+        builder.Services.AddSingleton<JwtIssuer>();
+        builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+        builder.Services.AddAntiforgery(o => { o.HeaderName = "X-CSRF-Token"; o.Cookie.Name = "__Secure-antiforgery"; o.Cookie.HttpOnly = true; o.Cookie.SecurePolicy = CookieSecurePolicy.Always; o.Cookie.SameSite = SameSiteMode.Strict; o.Cookie.Path = "/api/v1/auth"; });
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o => { o.TokenValidationParameters = new TokenValidationParameters { ValidateIssuer = true, ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "shortener", ValidateAudience = true, ValidAudience = builder.Configuration["Jwt:Audience"] ?? "shortener", ValidateLifetime = true, ClockSkew = TimeSpan.FromSeconds(30), ValidateIssuerSigningKey = true, IssuerSigningKey = JwtIssuer.SigningKey }; });
+        builder.Services.AddAuthorization();
         builder.Services.AddSingleton<IRecoveryRegistry>(services =>
             new PostgresRecoveryRegistry(builder.Configuration.GetConnectionString("Registry")!));
         builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new DecimalInt64Converter()));
@@ -79,6 +89,20 @@ public static class ServiceSetup
 
     public static void UseFoundation(this WebApplication app)
     {
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Method == "POST" && context.Request.Path.StartsWithSegments("/api/v1/auth") && !context.Request.Path.Value!.EndsWith("/csrf", StringComparison.OrdinalIgnoreCase))
+            {
+                var origin = context.Request.Headers.Origin.ToString();
+                var management = context.RequestServices.GetRequiredService<IConfiguration>()["Origins:Management"];
+                if (string.IsNullOrWhiteSpace(origin) || !string.Equals(origin, management, StringComparison.OrdinalIgnoreCase)) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+                try { await context.RequestServices.GetRequiredService<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().ValidateRequestAsync(context); }
+                catch (Microsoft.AspNetCore.Antiforgery.AntiforgeryValidationException) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+            }
+            await next(context);
+        });
         var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Shortener.Requests");
         var identity = app.Services.GetRequiredService<ServiceIdentity>();
         app.Use(async (context, next) =>

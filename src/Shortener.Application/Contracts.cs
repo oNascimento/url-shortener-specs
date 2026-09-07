@@ -4,6 +4,13 @@ public interface IEmailSender
 {
     Task SendAsync(string recipient, string subject, string body, CancellationToken cancellationToken);
 }
+public sealed record RegisterInput(string Email, string Password);
+public sealed record EmailInput(string Email);
+public sealed record LoginInput(string Email, string Password);
+public sealed record ActionTokenInput(string Token);
+public sealed record ResetPasswordInput(string Token, string NewPassword);
+public sealed record AuthResult(string AccessToken, string TokenType, int ExpiresIn, UserResult User);
+public sealed record UserResult(Guid Id, string Email, bool EmailVerified, string Role, DateTimeOffset CreatedAt);
 public sealed record AccessRecorded(int SchemaVersion, Guid EventId, string LinkId, DateTimeOffset OccurredAt, string SourceIp);
 public enum PublishOutcome { Confirmed, Rejected, Unknown }
 public interface IAccessPublisher

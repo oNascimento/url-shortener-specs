@@ -8,4 +8,5 @@
 <Project Path="src/Shortener.Worker/Shortener.Worker.csproj" />
 <Project Path="src/Shortener.Jobs/Shortener.Jobs.csproj" />
 <Project Path="tests/Shortener.Foundation.Tests/Shortener.Foundation.Tests.csproj" />
+<Project Path="tests/Shortener.Authentication.Tests/Shortener.Authentication.Tests.csproj" />
 </Solution>
