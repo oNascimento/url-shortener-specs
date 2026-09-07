@@ -1,6 +1,6 @@
 # 002 — Autenticação e sessões
 
-**Estado:** especificado; implementação pendente.
+**Estado:** backend implementado com [evidências unitárias e de integração](evidence.md); revisão do complemento no PR #5. As telas pertencem à funcionalidade 006.
 
 ## Objetivo
 

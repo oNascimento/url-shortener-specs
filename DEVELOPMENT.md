@@ -16,7 +16,7 @@ O bootstrap cria `.env` uma única vez com senhas aleatórias. A senha administr
 
 A interface fica em `https://localhost`; domínio curto em `https://s.localhost`; Grafana em `http://localhost:3000` (usuário `admin`); e-mails de teste em `http://localhost:8025`. A CA local do Caddy precisa ser confiada pelo navegador para validar HTTPS e cookies Secure nas próximas funcionalidades. Exportar com `docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt artifacts/local-root.crt` após criar `artifacts/`; importar somente essa CA de desenvolvimento no ambiente local. Não usar os certificados locais em produção.
 
-Não há endpoints de negócio nesta primeira entrega. A interface informa essa condição. Health checks `/health/live` e `/health/ready` só são acessíveis dentro da rede Compose; o proxy os bloqueia. Readiness exige a migração inicial e a disponibilidade de PostgreSQL, registro externo, RabbitMQ e Mailpit; telemetria permanece best-effort. Banco principal e registro externo têm volumes distintos; restaurar o banco principal nunca restaura o registro externo para trás.
+A API oferece autenticação e sessões; as telas correspondentes serão entregues na feature 006. Health checks `/health/live` e `/health/ready` só são acessíveis dentro da rede Compose; o proxy os bloqueia. Readiness exige a migração inicial e a disponibilidade de PostgreSQL, registro externo, RabbitMQ e Mailpit; telemetria permanece best-effort. Banco principal e registro externo têm volumes distintos; restaurar o banco principal nunca restaura o registro externo para trás.
 
 ## Verificação
 
@@ -36,6 +36,23 @@ npm run build
 `dotnet test` inclui PostgreSQL real via Testcontainers. Os testes não enviam e-mail ou acessam destinos externos. Usar `--filter Category!=Integration` apenas para diagnosticar regras unitárias; isso não substitui o aceite integrado.
 
 O contrato OpenAPI é gerado exclusivamente por `scripts/build_contract.py`. O frontend consome os tipos gerados, mantendo IDs e totais de 64 bits como strings. Migrações de negócio serão acrescentadas pelas respectivas funcionalidades; a fundação cria apenas metadados de esquema.
+
+## Autenticação e testes da feature 002
+
+```sh
+rtk test dotnet test tests/Shortener.Authentication.Tests --filter 'Category!=Integration'
+rtk test dotnet test tests/Shortener.Authentication.Tests --filter 'Category=Integration'
+```
+
+Os testes unitários usam relógio controlável e não iniciam contêineres. A integração usa `WebApplicationFactory`, PostgreSQL 17.6 e Mailpit 1.27.8 reais, com bancos isolados por teste. Os e-mails ficam somente no Mailpit; links de ação usam fragmento para o token e exigem POST explícito. A CI executa unitários e integração em etapas separadas, sob o check obrigatório `foundation`.
+
+JWT exige `Jwt:Issuer`, `Jwt:Audience`, `Jwt:KeyId` e uma chave RSA privada de pelo menos 2048 bits em `Jwt:PrivateKeyPem` ou `Jwt:PrivateKeyPath`. O Compose de desenvolvimento gera a chave uma vez e a conserva no volume `auth-keys`, junto às chaves antiforgery/Data Protection. A geração automática é proibida fora de Development. Em outros ambientes, provisionar esses segredos e compartilhar o key ring Data Protection entre réplicas usando `DataProtection:KeyPath`, com armazenamento e permissões protegidos.
+
+Para transição JWT, distribuir primeiro a nova chave pública em `Jwt:ValidationKeys:<índice>:KeyId` e `PublicKeyPem` em todas as instâncias. Depois, trocar a chave privada e o `Jwt:KeyId` de emissão, mantendo a chave pública anterior na lista e informando seu `RetiredAt` UTC: o instante em que ela deixou de emitir. A chave anterior é rejeitada após 900 segundos mais 30 segundos de tolerância, mesmo se permanecer configurada. Atualizações de configuração exigem reiniciar as instâncias. Nunca reutilizar `kid` para outro material criptográfico.
+
+Login usa 10 tentativas por IP/10 minutos; envios de e-mail compartilham 3 por e-mail/hora e 20 por IP/hora entre cadastro, reenvio e recuperação. Rotas protegidas usam 300 requisições por usuário/minuto. Os contadores transacionais ficam no PostgreSQL, com janela a partir da primeira tentativa, e `429` inclui `Retry-After`. Os identificadores são hashes, sem IP/e-mail em texto. O Compose confia somente no endereço fixo do Caddy para os headers encaminhados; `TrustedProxies` deve identificar os proxies de cada ambiente.
+
+O refresh bloqueia a linha do usuário e depois a sessão, dentro da transação. Reset e logout seguem a mesma ordem de coordenação. Reuso do refresh revoga a família; resultado perdido exige novo login no futuro cliente da feature 006. A migração complementar é aditiva e pode ser aplicada sobre a feature 002 existente.
 
 ## Observabilidade
 

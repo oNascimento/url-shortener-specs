@@ -11,3 +11,5 @@ Todas as tarefas abaixo são da futura implementação e começam pendentes. Mar
 | [ ] | F002-T05 | Verificar contratos de autenticação e transição de chaves. | F002-T04 | AF-08 no escopo de sessão/reset; T24 para transição de chave; nenhuma credencial em logs. |
 
 [Plano](plan.md) · [Especificação](spec.md) · [Índice de funcionalidades](../../README.md)
+
+Resultados do complemento de autenticação: [evidências de execução](evidence.md). Os checkboxes históricos ainda dependem da reconciliação das evidências da fundação; não substituem os resultados locais e a revisão do PR.

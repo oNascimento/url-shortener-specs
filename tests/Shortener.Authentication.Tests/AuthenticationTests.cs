@@ -108,7 +108,9 @@ public sealed class AuthenticationTests : IAsyncLifetime
     [Fact]
     public void Jwt_contains_required_claims_and_uses_configured_clock()
     {
-        var issuer = new JwtIssuer(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:Issuer"] = "tests", ["Jwt:Audience"] = "tests" }).Build(), clock);
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        using var issuer = new JwtIssuer(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        { ["Jwt:Issuer"] = "tests", ["Jwt:Audience"] = "tests", ["Jwt:KeyId"] = "unit", ["Jwt:PrivateKeyPem"] = rsa.ExportRSAPrivateKeyPem() }).Build(), clock);
         var session = new AuthSession { Id = Guid.NewGuid(), ExpiresAt = clock.GetUtcNow().AddDays(30) };
         var user = new UserResult(Guid.NewGuid(), "person@example.test", true, "user", clock.GetUtcNow());
         var result = issuer.Issue(session, user);
@@ -117,6 +119,179 @@ public sealed class AuthenticationTests : IAsyncLifetime
         Assert.Equal(session.Id.ToString(), token.Claims.Single(c => c.Type == "sid").Value);
         Assert.Equal("user", token.Claims.Single(c => c.Type == "role").Value);
         Assert.Equal(clock.GetUtcNow().AddMinutes(15).UtcDateTime, token.ValidTo);
+    }
+
+    [Fact]
+    public async Task Blocked_account_cannot_refresh_an_existing_session()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("blocked@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None);
+        var login = (await auth.LoginAsync(new LoginInput("blocked@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        created.User.BlockedAt = clock.GetUtcNow();
+        await db.SaveChangesAsync();
+        Assert.Null(await auth.RefreshAsync(login.Refresh, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Invalid_reset_password_preserves_password_and_action_token()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("reset@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None);
+        var token = await auth.CreateActionToken(created.User, "reset_password", TimeSpan.FromMinutes(30), CancellationToken.None);
+        Assert.False(await auth.ConsumeActionAsync(token, "reset_password", "short", CancellationToken.None));
+        Assert.NotNull(await auth.LoginAsync(new LoginInput("reset@example.test", "a password with spaces"), CancellationToken.None));
+        Assert.True(await auth.ConsumeActionAsync(token, "reset_password", "another password", CancellationToken.None));
+    }
+
+    [Fact]
+    public void Jwt_requires_explicit_key_configuration()
+    {
+        Assert.Throws<InvalidOperationException>(() => new JwtIssuer(new ConfigurationBuilder().Build(), clock));
+    }
+
+    [Fact]
+    public void Jwt_uses_configured_key_id_and_issued_at()
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Jwt:Issuer"] = "tests", ["Jwt:Audience"] = "tests", ["Jwt:KeyId"] = "rotation-new",
+            ["Jwt:PrivateKeyPem"] = rsa.ExportRSAPrivateKeyPem()
+        }).Build();
+        var issuer = new JwtIssuer(config, clock);
+        var result = issuer.Issue(new AuthSession { Id = Guid.NewGuid() }, new UserResult(Guid.NewGuid(), "person@example.test", true, "user", clock.GetUtcNow()));
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.AccessToken);
+        Assert.Equal("rotation-new", jwt.Header.Kid);
+        Assert.Equal(clock.GetUtcNow().ToUnixTimeSeconds().ToString(), jwt.Claims.Single(c => c.Type == "iat").Value);
+        new JwtSecurityTokenHandler().ValidateToken(result.AccessToken, new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = true, ValidIssuer = "tests", ValidateAudience = true, ValidAudience = "tests",
+            ValidateLifetime = false, IssuerSigningKey = new Microsoft.IdentityModel.Tokens.RsaSecurityKey(rsa),
+            ValidAlgorithms = ["RS256"]
+        }, out _);
+    }
+
+    [Fact]
+    public async Task Expired_session_cannot_refresh_or_access_user()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("expired@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None);
+        var login = (await auth.LoginAsync(new LoginInput("expired@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        clock.Advance(TimeSpan.FromDays(30));
+        Assert.Null(await auth.RefreshAsync(login.Refresh, CancellationToken.None));
+        Assert.Null(await auth.GetUserAsync(created.User.Id, login.Session.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Resend_issues_a_new_single_use_token_for_an_unverified_account()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("resend@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        var resent = await auth.ResendVerificationAsync(" RESEND@example.test ", CancellationToken.None);
+        Assert.NotNull(resent);
+        Assert.True(created.Token != resent.Value.Token);
+        Assert.Equal(2, await db.ActionTokens.CountAsync());
+        Assert.All(await db.ActionTokens.ToListAsync(), token => Assert.Equal(clock.GetUtcNow().AddHours(24), token.ExpiresAt));
+        Assert.True(await auth.ConsumeActionAsync(resent.Value.Token, "verify_email", null, CancellationToken.None));
+        Assert.False(await auth.ConsumeActionAsync(resent.Value.Token, "verify_email", null, CancellationToken.None));
+        Assert.Null(await auth.ResendVerificationAsync("resend@example.test", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Unknown_account_email_actions_do_not_create_tokens()
+    {
+        Assert.Null(await auth.ResendVerificationAsync("absent@example.test", CancellationToken.None));
+        Assert.Null(await auth.CreateResetAsync("absent@example.test", CancellationToken.None));
+        Assert.Empty(await db.ActionTokens.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Unavailable_account_cannot_consume_or_request_email_actions(bool deleting)
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("unavailable@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        if (deleting) created.User.DeletionRequestedAt = clock.GetUtcNow();
+        else created.User.BlockedAt = clock.GetUtcNow();
+        await db.SaveChangesAsync();
+        Assert.Null(await auth.ResendVerificationAsync("unavailable@example.test", CancellationToken.None));
+        Assert.Null(await auth.CreateResetAsync("unavailable@example.test", CancellationToken.None));
+        Assert.False(await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None));
+        Assert.Null((await db.ActionTokens.SingleAsync()).ConsumedAt);
+    }
+
+    [Fact]
+    public async Task Action_token_cannot_be_used_for_another_purpose()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("purpose@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        Assert.False(await auth.ConsumeActionAsync(created.Token, "reset_password", "another password", CancellationToken.None));
+        Assert.True(await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Reset_expires_at_30_minutes_without_changing_password()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("expiry@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None);
+        var reset = (await auth.CreateResetAsync("expiry@example.test", CancellationToken.None))!.Value;
+        clock.Advance(TimeSpan.FromMinutes(30));
+        Assert.False(await auth.ConsumeActionAsync(reset.Token, "reset_password", "another password", CancellationToken.None));
+        Assert.NotNull(await auth.LoginAsync(new LoginInput("expiry@example.test", "a password with spaces"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Logout_is_idempotent_and_only_revokes_its_session()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("sessions@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None);
+        var first = (await auth.LoginAsync(new LoginInput("sessions@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        var second = (await auth.LoginAsync(new LoginInput("sessions@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.LogoutAsync(first.Refresh, CancellationToken.None);
+        var revoked = first.Session.RevokedAt;
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await auth.LogoutAsync(first.Refresh, CancellationToken.None);
+        await auth.LogoutAsync("unknown", CancellationToken.None);
+        Assert.Equal(revoked, first.Session.RevokedAt);
+        Assert.Null(await auth.GetUserAsync(created.User.Id, first.Session.Id, CancellationToken.None));
+        Assert.Null(await auth.RefreshAsync(first.Refresh, CancellationToken.None));
+        Assert.NotNull(await auth.GetUserAsync(created.User.Id, second.Session.Id, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Refresh_preserves_expiration_and_deleting_account_is_rejected()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("deleting@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None);
+        var first = (await auth.LoginAsync(new LoginInput("deleting@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        var expires = first.Session.ExpiresAt;
+        clock.Advance(TimeSpan.FromDays(29));
+        var refreshed = await auth.RefreshAsync(first.Refresh, CancellationToken.None);
+        Assert.NotNull(refreshed);
+        Assert.Equal(expires, refreshed.Value.Session.ExpiresAt);
+        created.User.DeletionRequestedAt = clock.GetUtcNow();
+        await db.SaveChangesAsync();
+        Assert.Null(await auth.RefreshAsync(refreshed.Value.Refresh, CancellationToken.None));
+        Assert.Null(await auth.GetUserAsync(created.User.Id, first.Session.Id, CancellationToken.None));
+        Assert.Null(await auth.LoginAsync(new LoginInput("deleting@example.test", "a password with spaces"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Reset_invalidates_all_other_reset_tokens()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("other-tokens@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        var first = (await auth.CreateResetAsync(created.User.Email!, CancellationToken.None))!.Value;
+        var second = (await auth.CreateResetAsync(created.User.Email!, CancellationToken.None))!.Value;
+        Assert.True(await auth.ConsumeActionAsync(first.Token, "reset_password", "another password", CancellationToken.None));
+        Assert.False(await auth.ConsumeActionAsync(second.Token, "reset_password", "third password", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Session_id_cannot_be_used_for_another_user()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("owner@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None);
+        var login = (await auth.LoginAsync(new LoginInput("owner@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        Assert.Null(await auth.GetUserAsync(Guid.NewGuid(), login.Session.Id, CancellationToken.None));
+        Assert.Null(await auth.GetUserAsync(created.User.Id, Guid.NewGuid(), CancellationToken.None));
     }
 
     private sealed class ManualClock(DateTimeOffset value) : TimeProvider

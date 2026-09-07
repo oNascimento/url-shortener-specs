@@ -49,11 +49,14 @@ public class LoggingTests
     [Fact]
     public async Task ExceptionDoesNotLeakSensitiveDataAndUnavailableCollectorDoesNotBlockRequest()
     {
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ConnectionStrings:Primary"] = "Host=localhost;Database=test;Username=test;Password=sentinel-password",
+            ["Jwt:Issuer"] = "tests", ["Jwt:Audience"] = "tests", ["Jwt:KeyId"] = "logging-test",
+            ["Jwt:PrivateKeyPem"] = rsa.ExportRSAPrivateKeyPem(),
             ["ConnectionStrings:Registry"] = "Host=localhost;Database=test",
             ["Messaging:Host"] = "localhost",
             ["Email:Host"] = "localhost",
