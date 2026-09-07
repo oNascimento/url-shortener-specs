@@ -110,6 +110,12 @@ public static class ServiceSetup
                     identity.AddClaim(new Claim("role", user.Role));
                 },
                 OnChallenge = async context => { context.HandleResponse(); await AuthHttp.WriteProblemAsync(context.HttpContext, 401, "unauthorized"); },
+                OnAuthenticationFailed = context =>
+                {
+                    if (IsDatabaseFailure(context.Exception))
+                        System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(context.Exception).Throw();
+                    return Task.CompletedTask;
+                },
                 OnForbidden = context => AuthHttp.WriteProblemAsync(context.HttpContext, 403, "forbidden")
             };
         });
@@ -157,6 +163,11 @@ public static class ServiceSetup
                 ["version"] = identity.Version
             });
             context.Response.Headers.CacheControl = "no-store";
+            context.Response.OnStarting(() =>
+            {
+                context.Response.Headers.CacheControl = "no-store";
+                return Task.CompletedTask;
+            });
             try { await next(context); }
             catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
             {
@@ -166,7 +177,7 @@ public static class ServiceSetup
             {
                 await AuthHttp.WriteProblemAsync(context, error.StatusCode, "invalid_input");
             }
-            catch (Exception error) when (error is System.Data.Common.DbException or DbUpdateException)
+            catch (Exception error) when (IsDatabaseFailure(error))
             {
                 logger.LogError("Database operation unavailable ({type})", error.GetType().Name);
                 await AuthHttp.WriteProblemAsync(context, 503, "service_unavailable");
@@ -189,13 +200,19 @@ public static class ServiceSetup
         });
         app.UseStatusCodePages(context => AuthHttp.WriteProblemAsync(context.HttpContext, context.HttpContext.Response.StatusCode,
             context.HttpContext.Response.StatusCode switch { 401 => "unauthorized", 403 => "forbidden", 404 => "not_found", _ => "invalid_input" }));
-        app.UseWhen(context => context.Request.Path.StartsWithSegments("/api/v1"), branch =>
+        app.Use(async (context, next) =>
         {
-            branch.UseForwardedHeaders();
-            branch.UseAuthentication();
-            branch.UseMiddleware<AuthHttp>();
-            branch.UseAuthorization();
+            if (context.Connection.RemoteIpAddress is null)
+            {
+                context.Request.Headers.Remove("X-Forwarded-For");
+                context.Request.Headers.Remove("X-Forwarded-Proto");
+            }
+            await next(context);
         });
+        app.UseForwardedHeaders();
+        app.UseAuthentication();
+        app.UseMiddleware<AuthHttp>();
+        app.UseAuthorization();
         app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
         app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
         {
@@ -234,6 +251,13 @@ public static class ServiceSetup
         {
             return HealthCheckResult.Unhealthy("dependency unavailable");
         }
+    }
+
+    private static bool IsDatabaseFailure(Exception error)
+    {
+        for (Exception? current = error; current is not null; current = current.InnerException)
+            if (current is System.Data.Common.DbException or DbUpdateException) return true;
+        return false;
     }
 
     private static async Task<HealthCheckResult> CheckTcpAsync(string host, int port, CancellationToken cancellationToken)

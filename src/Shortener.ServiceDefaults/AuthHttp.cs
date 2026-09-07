@@ -24,7 +24,7 @@ public sealed class AuthHttp(RequestDelegate next)
             string? email = null;
             if (operation is "register" or "verify-email" or "resend-verification" or "login" or "forgot-password" or "reset-password")
             {
-                if (!context.Request.HasJsonContentType()) { await WriteProblemAsync(context, 415, "invalid_input"); return; }
+                if (!context.Request.HasJsonContentType()) { await WriteProblemAsync(context, 400, "invalid_input"); return; }
                 context.Request.EnableBuffering();
                 try
                 {
@@ -85,7 +85,7 @@ public sealed class AuthHttp(RequestDelegate next)
         return true;
     }
 
-    public static IResult Problem(HttpContext context, int status, string code) => Results.Problem(statusCode: status,
+    public static IResult Problem(HttpContext context, int status, string code) => Results.Problem(statusCode: status, type: "about:blank",
         title: status switch { 400 => "Dados inválidos", 401 => "Autenticação inválida", 403 => "Acesso negado", 429 => "Aguarde antes de tentar novamente", 503 => "Serviço indisponível", _ => "Falha na solicitação" },
         extensions: new Dictionary<string, object?> { ["code"] = code, ["traceId"] = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier });
 
