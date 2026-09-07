@@ -14,6 +14,7 @@ public sealed class JwtIssuer : IDisposable
     private readonly string issuer;
     private readonly string audience;
     private readonly RsaSecurityKey signingKey;
+    private readonly CryptoProviderFactory crypto = new() { CacheSignatureProviders = false };
     private readonly List<(RsaSecurityKey Key, DateTimeOffset? RetiredAt)> validationKeys = [];
 
     public JwtIssuer(IConfiguration config, TimeProvider clock)
@@ -33,7 +34,7 @@ public sealed class JwtIssuer : IDisposable
         rsa.ImportFromPem(pem);
         if (rsa.KeySize < 2048) throw new InvalidOperationException("JWT RSA key must be at least 2048 bits.");
         _ = rsa.ExportParameters(true);
-        signingKey = new RsaSecurityKey(rsa) { KeyId = keyId };
+        signingKey = new RsaSecurityKey(rsa) { KeyId = keyId, CryptoProviderFactory = crypto };
         validationKeys.Add((signingKey, null));
         foreach (var entry in config.GetSection("Jwt:ValidationKeys").GetChildren())
         {
@@ -43,7 +44,7 @@ public sealed class JwtIssuer : IDisposable
             var id = Required(entry, "KeyId");
             if (validationKeys.Any(x => x.Key.KeyId == id)) throw new InvalidOperationException("Duplicate JWT key id.");
             DateTimeOffset? retired = entry["RetiredAt"] is { } value ? DateTimeOffset.Parse(value, CultureInfo.InvariantCulture) : null;
-            validationKeys.Add((new RsaSecurityKey(key) { KeyId = id }, retired));
+            validationKeys.Add((new RsaSecurityKey(key) { KeyId = id, CryptoProviderFactory = crypto }, retired));
         }
     }
 
@@ -63,6 +64,7 @@ public sealed class JwtIssuer : IDisposable
         ValidateIssuerSigningKey = true, RequireSignedTokens = true, RequireExpirationTime = true,
         ValidAlgorithms = [SecurityAlgorithms.RsaSha256], ValidateLifetime = true, ClockSkew = TimeSpan.FromSeconds(30),
         NameClaimType = "sub", RoleClaimType = "role",
+        CryptoProviderFactory = crypto,
         IssuerSigningKeyResolver = (_, _, kid, _) => validationKeys
             .Where(x => x.Key.KeyId == kid && (x.RetiredAt is null || clock.GetUtcNow() < x.RetiredAt.Value.AddSeconds(930)))
             .Select(x => (SecurityKey)x.Key),
