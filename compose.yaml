@@ -93,7 +93,7 @@ services:
 networks:
   default:
     ipam:
-      config: [{subnet: 172.29.0.0/24}]
+      config: [{subnet: 172.29.0.0/24, ip_range: 172.29.0.128/25}]
 volumes:
   auth-keys:
   postgres:
