@@ -119,6 +119,67 @@ public sealed class AuthenticationTests : IAsyncLifetime
         Assert.Equal(clock.GetUtcNow().AddMinutes(15).UtcDateTime, token.ValidTo);
     }
 
+    [Fact]
+    public async Task Blocked_account_cannot_refresh_an_existing_session()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("blocked@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None);
+        var login = (await auth.LoginAsync(new LoginInput("blocked@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        created.User.BlockedAt = clock.GetUtcNow();
+        await db.SaveChangesAsync();
+        Assert.Null(await auth.RefreshAsync(login.Refresh, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Invalid_reset_password_preserves_password_and_action_token()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("reset@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None);
+        var token = await auth.CreateActionToken(created.User, "reset_password", TimeSpan.FromMinutes(30), CancellationToken.None);
+        Assert.False(await auth.ConsumeActionAsync(token, "reset_password", "short", CancellationToken.None));
+        Assert.NotNull(await auth.LoginAsync(new LoginInput("reset@example.test", "a password with spaces"), CancellationToken.None));
+        Assert.True(await auth.ConsumeActionAsync(token, "reset_password", "another password", CancellationToken.None));
+    }
+
+    [Fact]
+    public void Jwt_requires_explicit_key_configuration()
+    {
+        Assert.Throws<InvalidOperationException>(() => new JwtIssuer(new ConfigurationBuilder().Build(), clock));
+    }
+
+    [Fact]
+    public void Jwt_uses_configured_key_id_and_issued_at()
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Jwt:Issuer"] = "tests", ["Jwt:Audience"] = "tests", ["Jwt:KeyId"] = "rotation-new",
+            ["Jwt:PrivateKeyPem"] = rsa.ExportRSAPrivateKeyPem()
+        }).Build();
+        var issuer = new JwtIssuer(config, clock);
+        var result = issuer.Issue(new AuthSession { Id = Guid.NewGuid() }, new UserResult(Guid.NewGuid(), "person@example.test", true, "user", clock.GetUtcNow()));
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.AccessToken);
+        Assert.Equal("rotation-new", jwt.Header.Kid);
+        Assert.Equal(clock.GetUtcNow().ToUnixTimeSeconds().ToString(), jwt.Claims.Single(c => c.Type == "iat").Value);
+        new JwtSecurityTokenHandler().ValidateToken(result.AccessToken, new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = true, ValidIssuer = "tests", ValidateAudience = true, ValidAudience = "tests",
+            ValidateLifetime = false, IssuerSigningKey = new Microsoft.IdentityModel.Tokens.RsaSecurityKey(rsa),
+            ValidAlgorithms = ["RS256"]
+        }, out _);
+    }
+
+    [Fact]
+    public async Task Expired_session_cannot_refresh_or_access_user()
+    {
+        var created = (await auth.CreateUserAsync(new RegisterInput("expired@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        await auth.ConsumeActionAsync(created.Token, "verify_email", null, CancellationToken.None);
+        var login = (await auth.LoginAsync(new LoginInput("expired@example.test", "a password with spaces"), CancellationToken.None))!.Value;
+        clock.Advance(TimeSpan.FromDays(30));
+        Assert.Null(await auth.RefreshAsync(login.Refresh, CancellationToken.None));
+        Assert.Null(await auth.GetUserAsync(created.User.Id, login.Session.Id, CancellationToken.None));
+    }
+
     private sealed class ManualClock(DateTimeOffset value) : TimeProvider
     {
         private DateTimeOffset current = value;
