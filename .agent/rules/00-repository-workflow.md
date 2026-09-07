@@ -20,6 +20,7 @@ Estas regras se aplicam a qualquer alteração neste repositório.
 ## Ferramentas
 
 - Prefira `rtk` para leitura, busca, Git, testes, lint, TypeScript, builds, Docker e logs.
+- Para .NET, use explicitamente `rtk dotnet restore`, `rtk dotnet build`, `rtk dotnet test` e `rtk dotnet format`; não dependa da reescrita automática de comandos. Para subcomandos sem wrapper específico, use `rtk proxy dotnet <subcomando>`.
 - Prefira `rtk err` quando o objetivo for identificar erros e `rtk test` para runners sem wrapper específico.
 - Use saída completa somente quando a compactação esconder a informação necessária.
 - Após editar, execute uma validação direcionada antes de ampliar a investigação.
