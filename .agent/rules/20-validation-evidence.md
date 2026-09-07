@@ -14,12 +14,12 @@ O contrato OpenAPI é gerado exclusivamente por `scripts/build_contract.py`. Nã
 ## Validação .NET
 
 ```sh
-dotnet restore --locked-mode
-dotnet build --no-restore -c Release
-dotnet test --no-build -c Release
+rtk dotnet restore --locked-mode
+rtk dotnet build --no-restore -c Release
+rtk dotnet test --no-build -c Release
 ```
 
-Use primeiro o projeto ou teste afetado. `dotnet test` inclui PostgreSQL real via Testcontainers; `--filter Category!=Integration` serve apenas para diagnóstico e não substitui o aceite integrado.
+Use primeiro o projeto ou teste afetado. `rtk dotnet test` inclui PostgreSQL real via Testcontainers; `--filter Category!=Integration` serve apenas para diagnóstico e não substitui o aceite integrado.
 
 ## Validação frontend
 
