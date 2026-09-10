@@ -20,7 +20,9 @@ public static class AuthRateLimits
         _ => []
     };
 
-    public static RateLimitRule ForUser(Guid user) => Rule("user", user.ToString(), 300, TimeSpan.FromMinutes(1));
+    public static RateLimitRule ForUser(Guid user, bool creation = false) => creation
+        ? Rule("creation", user.ToString(), 60, TimeSpan.FromMinutes(1))
+        : Rule("user", user.ToString(), 300, TimeSpan.FromMinutes(1));
 }
 
 public sealed class PostgresRateLimiter(AppDbContext db, TimeProvider clock)

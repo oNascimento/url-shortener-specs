@@ -1,6 +1,6 @@
 # 003 — Gestão de links e Base62
 
-**Estado:** especificado; implementação pendente.
+**Estado:** backend implementado e verificado; [evidências e limites de aceite](evidence.md). Interface, redirecionamento/eventos e recuperação operacional integral dependem das funcionalidades correspondentes.
 
 ## Objetivo
 

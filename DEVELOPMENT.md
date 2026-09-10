@@ -55,6 +55,35 @@ Login usa 10 tentativas por IP/10 minutos; envios de e-mail compartilham 3 por e
 
 O refresh bloqueia a linha do usuário e depois a sessão, dentro da transação. Reset e logout seguem a mesma ordem de coordenação. Reuso do refresh revoga a família; resultado perdido exige novo login no futuro cliente da feature 006. A migração complementar é aditiva e pode ser aplicada sobre a feature 002 existente.
 
+## Gestão de links e evidência da feature 003
+
+A API implementa POST/GET `/api/v1/links`, GET `/api/v1/links/{linkId}` e POST `/api/v1/links/{linkId}/deactivate`. Exige Bearer válido; criação exige `Idempotency-Key` UUID por ação e tem orçamento separado de 60/minuto por usuário. As demais rotas protegidas mantêm 300/minuto. A interface e o redirecionamento público pertencem às próximas funcionalidades.
+
+`Origins:Short` fornece a origem absoluta do endereço curto; `Origins:ShortAliases:<índice>` aceita origens HTTP/HTTPS adicionais a rejeitar como destino. Comparar hosts independe de porta e esquema. Compartilhar o key ring Data Protection entre réplicas também é obrigatório para os cursores, válidos por 24 horas. A migração de links é aditiva; códigos e IDs não devem ser apagados ou reciclados no rollback da aplicação.
+
+O banco principal coordena alocação e mantém a sequência. O registro externo autoriza faixas inclusivas de um milhão antes de elevar MAXVALUE; a primeira emissão é 1. A migração deixa a sequência esgotada até a autorização inicial. Falhas podem deixar lacunas. O teste concorrente usa 100 clientes e PostgreSQL com `max_connections=250`; isso é configuração do ensaio, não uma recomendação de capacidade de produção.
+
+Com Docker ativo, coletar tudo em um diretório novo por execução:
+
+```sh
+dotnet restore --locked-mode
+dotnet build --no-restore -c Debug
+rtk test dotnet test tests/Shortener.LinkManagement.Tests --no-build --settings tests/link-management.runsettings --logger trx --results-directory artifacts/link-management/feature
+rtk test dotnet test tests/Shortener.Authentication.Tests --no-build --settings tests/link-management.runsettings --logger trx --results-directory artifacts/link-management/auth
+rtk proxy python scripts/check_link_coverage.py artifacts/link-management --output artifacts/link-management/coverage-summary.json
+rtk proxy python scripts/check_link_requirements.py artifacts/link-management/feature --output artifacts/link-management/requirements-summary.json
+```
+
+O check `link-management` exige 100% das linhas/ramificações declaradas, sem arredondar, e todos os cenários backend. O manifesto inclui todo código novo e métodos compartilhados alterados; o gate também compara arquivos/métodos com o ancestral comum de `origin/main`. O artefato `link-management-evidence` contém TRX, relatórios e ambiente. Cobertura mede execução de código; a matriz de requisitos comprova separadamente os resultados funcionais testados.
+
+### Preparação da alocação após restore
+
+Suspender criação antes da recuperação, usando `docker compose run --rm jobs --suspend-link-creation`. Manter o ambiente restaurado isolado conforme operations.md. O comando de preparação exige a suspensão persistida; não inferir segurança pela indisponibilidade de rede do escritor anterior.
+
+Depois de o operador revogar LOGIN do papel de escrita antigo, encerrar suas conexões e impedir seu retorno pela infraestrutura, provisionar `ConnectionStrings:OldPrimary` (conexão administrativa de leitura ao primário antigo) e `Recovery:WriterRole` no gerenciador de segredos. Executar `docker compose run --rm jobs --prepare-link-restore` com essas configurações injetadas no serviço. O comando verifica positivamente NOLOGIN e ausência de sessões, reserva acima do limite externo anterior e posiciona a sequência antes de liberar criação. Falha mantém suspensão; repetir é seguro e pode deixar outra lacuna. Nunca restaurar o registro externo para trás. Não usar o papel administrativo verificador como papel da aplicação.
+
+A verificação cobre um papel de escrita configurado: o operador deve garantir que ele seja o único escritor da aplicação no primário antigo. Fencing de rede, eleição do primário, PITR, reaplicação de exclusões e retomada dos demais serviços permanecem parte do runbook integral da feature 008. Com BIGINT esgotado, manter criação suspensa.
+
 ## Observabilidade
 
 Aplicação → exportador OTLP em lote → Collector → Loki; métricas → Collector → Prometheus. Grafana provisiona as duas fontes e o dashboard **Shortener — Aplicação**. No Explore, consultar `{service_name=~"shortener-.+"}`. Para uma falha correlacionada, filtrar `trace_id` com o identificador retornado em Problem Details.

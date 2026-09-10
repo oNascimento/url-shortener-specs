@@ -1,6 +1,6 @@
 # Tarefas — 003
 
-Todas as tarefas abaixo são da futura implementação e começam pendentes. Marcar conclusão apenas após entregar código/configuração e a evidência descrita. Dependências são IDs globais; `—` significa nenhuma.
+O backend das tarefas abaixo foi implementado e testado; resultados e limites estão em [evidence.md](evidence.md). Os checkboxes históricos respeitam as dependências globais F001/F002 e não representam falta de código nesta entrega. Marcar conclusão formal somente após reconciliar essas dependências e a evidência exigida. `—` significa nenhuma dependência.
 
 | Estado | ID | Tarefa | Depende de | Evidência para concluir |
 |---|---|---|---|---|
