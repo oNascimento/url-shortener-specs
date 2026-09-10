@@ -4,6 +4,8 @@
 
 Código verificado: [`2e95d7d`](https://github.com/oNascimento/url-shortener-specs/commit/2e95d7dcc34480c0beab96f29dbcaa52bd7fa37c). A documentação de evidência e as referências de rastreabilidade são registradas separadamente; não alteram o código medido.
 
+PR: [#7](https://github.com/oNascimento/url-shortener-specs/pull/7). [Checks e artefatos da revisão atual](https://github.com/oNascimento/url-shortener-specs/pull/7/checks) identificam o SHA de cada execução remota. Artefatos: `link-management-evidence` (cobertura/matriz/ambiente) e `foundation-test-results` (regressões/smoke).
+
 ## Ambiente e resultados reais
 
 Execução local em 9–10 de setembro de 2026: Windows, .NET SDK 10.0.400, Docker Engine 29.7.2, PostgreSQL 17.6 em contêineres separados para primário e registro, xUnit 2.9.3, Coverlet 6.0.4 e build Debug. Autenticação usa Mailpit 1.27.8. Node local 20.15.1; a imagem frontend e a CI usam Node 22.19.0. Nenhum teste enviou e-mail real ou abriu destinos externos.
