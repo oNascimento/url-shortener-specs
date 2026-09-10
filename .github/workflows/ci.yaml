@@ -64,7 +64,7 @@ jobs:
         run: npm ci && npm run generate && git diff --exit-code -- src/api/schema.d.ts && npm test && npm run build
       - id: local_environment
         run: python scripts/bootstrap.py && docker compose config --quiet
-      - run: docker compose build && docker compose up -d postgres registry rabbitmq mailpit collector loki prometheus grafana && docker compose run --rm jobs --migrate && docker compose up -d
+      - run: docker compose build && docker compose up -d postgres registry rabbitmq mailpit collector loki prometheus grafana && docker compose run --rm jobs --migrate && docker compose --profile proxy up -d
       - run: |
           mkdir -p artifacts
           {
@@ -73,7 +73,8 @@ jobs:
             echo "node: $(node --version)"
             echo "python: $(python --version 2>&1)"
           } > artifacts/foundation-environment.txt
-      - run: python scripts/smoke_foundation.py | tee artifacts/foundation-smoke.txt
+      - shell: bash
+        run: python scripts/smoke_foundation.py 2>&1 | tee artifacts/foundation-smoke.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -81,5 +82,5 @@ jobs:
           path: |
             **/TestResults/**
             artifacts/**
-      - run: docker compose down
+      - run: docker compose --profile proxy down
         if: always() && steps.local_environment.outcome == 'success'
