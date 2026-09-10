@@ -1,6 +1,4 @@
 using Shortener.ServiceDefaults;
-using Microsoft.EntityFrameworkCore;
-using Shortener.Infrastructure;
 using Shortener.Jobs;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddFoundation("shortener-jobs");

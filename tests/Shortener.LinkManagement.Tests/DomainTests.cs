@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Shortener.Application;
 using Shortener.Authentication.Tests;

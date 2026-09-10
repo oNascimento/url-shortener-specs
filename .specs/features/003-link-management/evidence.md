@@ -2,7 +2,7 @@
 
 **100% of feature 003’s backend scope implemented and verified.** Esta conclusão é limitada ao backend aprovado: RF-06–10 e RF-17–18 nas parcelas de validação, persistência, API, autorização, paginação, estado e alocação. Interface, redirecionamento/eventos e recuperação operacional integral permanecem dependências explicitadas abaixo.
 
-Código verificado: [`2e95d7d`](https://github.com/oNascimento/url-shortener-specs/commit/2e95d7dcc34480c0beab96f29dbcaa52bd7fa37c). A documentação de evidência e as referências de rastreabilidade são registradas separadamente; não alteram o código medido.
+Código funcional medido localmente: [`2e95d7d`](https://github.com/oNascimento/url-shortener-specs/commit/2e95d7dcc34480c0beab96f29dbcaa52bd7fa37c). Revisões posteriores acrescentam rastreabilidade e removem imports sem uso; os checks do PR verificam a revisão atual.
 
 PR: [#7](https://github.com/oNascimento/url-shortener-specs/pull/7). [Checks e artefatos da revisão atual](https://github.com/oNascimento/url-shortener-specs/pull/7/checks) identificam o SHA de cada execução remota. Artefatos: `link-management-evidence` (cobertura/matriz/ambiente) e `foundation-test-results` (regressões/smoke).
 
