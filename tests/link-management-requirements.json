@@ -5,7 +5,7 @@
     {"id":"RF-06.hosts", "description":"Case, IDNA, trailing-dot and port-independent rejection of short-host aliases", "tests":["DomainTests.Forbidden_urls_are_rejected", "HttpTests.Malformed_requests_are_contract_problems_without_mutations"]},
     {"id":"RF-06.no-network", "description":"No fetch, preview or DNS resolution of destinations", "tests":["ServiceTests.Destination_validation_never_contacts_the_target"]},
     {"id":"RF-07.result", "description":"Full short URL and original destination; decimal ID and consistent timestamp", "tests":["HttpTests.Contract_precision_owner_isolation_and_idempotent_http_results"]},
-    {"id":"RF-07.idempotency", "description":"Owner-scoped concurrent replay, conflicts, intentional duplicates, lost response and current state", "tests":["ServiceTests.Idempotency_concurrency_conflict_expiration_and_current_state", "HttpTests.Contract_precision_owner_isolation_and_idempotent_http_results"]},
+    {"id":"RF-07.idempotency", "description":"Owner-scoped concurrent replay, conflicts, intentional duplicates, lost response and current state", "tests":["ServiceTests.Idempotency_concurrency_conflict_expiration_and_current_state", "HttpTests.Contract_precision_owner_isolation_and_idempotent_http_results", "HttpTests.Response_loss_retries_share_the_committed_link"]},
     {"id":"RF-07.expiry", "description":"Atomic 24-hour expiry independent of cleanup jobs", "tests":["ServiceTests.Idempotency_concurrency_conflict_expiration_and_current_state"]},
     {"id":"RF-08.pagination", "description":"Newest-first stable keyset paging, 50 default, 100 maximum, no row totals", "tests":["ServiceTests.Stable_paging_ownership_and_state_precedence", "HttpTests.Auth_revocation_cookie_rejection_and_shared_rate_limits"]},
     {"id":"RF-08.cursor", "description":"Protected 24-hour cursor bound to owner, route, filters and limit; shared across replicas", "tests":["DomainTests.Cursor_binding_and_expiration", "ServiceTests.Stable_paging_ownership_and_state_precedence"]},
@@ -14,7 +14,7 @@
     {"id":"RF-10.deactivation", "description":"Permanent idempotent owner deactivation preserves link and history; disabled takes precedence over blocked", "tests":["ServiceTests.Stable_paging_ownership_and_state_precedence", "ServiceTests.Idempotency_concurrency_conflict_expiration_and_current_state"]},
     {"id":"RF-17.encoding", "description":"Frozen case-sensitive Base62, positive BIGINT sequence, no padding or user-selected code", "tests":["DomainTests.Base62_vectors", "DomainTests.Base62_rejects_nonpositive", "ServiceTests.Migration_upgrade_rollback_constraints_and_cancellation", "HttpTests.Malformed_requests_are_contract_problems_without_mutations"]},
     {"id":"RF-18.growth", "description":"Length transitions, unique codes, rollback gaps, no reuse or change to existing codes", "tests":["DomainTests.Base62_vectors", "ServiceTests.Ten_thousand_attempts_with_one_hundred_clients_and_rollbacks"]},
-    {"id":"RF-18.reservations", "description":"Confirmed inclusive external ranges, prefetch, outage and ambiguous-write recovery", "tests":["SequenceTests.Reservations_fail_closed_reconcile_and_extend_without_reusing_ids"]},
+    {"id":"RF-18.reservations", "description":"Confirmed inclusive external ranges, prefetch, outage and ambiguous-write recovery", "tests":["SequenceTests.Reservations_fail_closed_reconcile_and_extend_without_reusing_ids", "SequenceTests.Independent_coordinators_share_one_confirmed_range"]},
     {"id":"RF-18.restore", "description":"Allocation restore requires suspension and positive writer fencing, skips past external reservations", "tests":["SequenceTests.Restore_requires_suspension_and_positive_fencing_and_skips_old_reservations", "JobsTests.Jobs_migrate_suspend_verify_and_prepare_restore"]},
     {"id":"RF-18.capacity", "description":"Final partial range and BIGINT exhaustion without overflow or reuse", "tests":["SequenceTests.Final_partial_range_and_exhaustion_never_overflow"]},
     {"id":"shared.security", "description":"Real JWT/session revocation, no cookie identity, shared creation/read limits and sanitized errors", "tests":["HttpTests.Auth_revocation_cookie_rejection_and_shared_rate_limits", "HttpTests.Allocation_and_database_failures_are_explicit_503", "HttpTests.Contract_precision_owner_isolation_and_idempotent_http_results"]},
@@ -23,11 +23,11 @@
   "scenarios": {
     "T01":["DomainTests.Base62_vectors"],
     "T02":["ServiceTests.Ten_thousand_attempts_with_one_hundred_clients_and_rollbacks"],
-    "T03":["ServiceTests.Idempotency_concurrency_conflict_expiration_and_current_state"],
+    "T03":["ServiceTests.Idempotency_concurrency_conflict_expiration_and_current_state", "HttpTests.Response_loss_retries_share_the_committed_link"],
     "T08":["DomainTests.Valid_urls_are_preserved", "DomainTests.Forbidden_urls_are_rejected", "ServiceTests.Destination_validation_never_contacts_the_target"],
     "T17":["DomainTests.Cursor_binding_and_expiration", "ServiceTests.Stable_paging_ownership_and_state_precedence"],
     "T20":["HttpTests.Contract_precision_owner_isolation_and_idempotent_http_results", "HttpTests.Malformed_requests_are_contract_problems_without_mutations"],
-    "T21":["SequenceTests.Reservations_fail_closed_reconcile_and_extend_without_reusing_ids", "SequenceTests.Restore_requires_suspension_and_positive_fencing_and_skips_old_reservations", "JobsTests.Jobs_migrate_suspend_verify_and_prepare_restore"],
+    "T21":["SequenceTests.Reservations_fail_closed_reconcile_and_extend_without_reusing_ids", "SequenceTests.Restore_requires_suspension_and_positive_fencing_and_skips_old_reservations", "JobsTests.Jobs_migrate_suspend_verify_and_prepare_restore", "SequenceTests.Independent_coordinators_share_one_confirmed_range"],
     "T22":["SequenceTests.Final_partial_range_and_exhaustion_never_overflow"]
   },
   "externalAcceptance": {

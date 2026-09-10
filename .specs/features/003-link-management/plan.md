@@ -32,6 +32,8 @@ Requests, responses, erros e segurança: [OpenAPI](../../contracts/openapi.json)
 
 ## Testes e conclusão
 
+Implementação backend entregue em Domain (Base62/URL), Infrastructure (persistência SQL, cursor, sequência e verificação do escritor), API (quatro rotas existentes) e Jobs (suspensão/preparação da alocação após restore). Testes usam PostgreSQL/registro separados e autenticação real. Os gates de requisitos e cobertura exata estão na CI `link-management`; comandos, medições, referências e dependências de aceite estão em [evidence.md](evidence.md).
+
 Executar T01, T02, T03, T08, T17, T20, T21, T22 nos escopos desta funcionalidade. Para regras que cruzam funcionalidades, o aceite final depende da integração correspondente. Guardar comandos, resultados e ambiente como evidência; este documento não afirma que esses testes passaram.
 
 [Tarefas e dependências](tasks.md) · [Especificação](spec.md)
