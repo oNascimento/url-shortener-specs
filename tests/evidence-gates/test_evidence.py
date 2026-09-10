@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import pathlib
+import subprocess
 import tempfile
 import unittest
 
@@ -59,6 +60,29 @@ class CoverageGateTests(unittest.TestCase):
         result = self.evaluate([report], manifest, {'src/Feature.cs': {1}})
         self.assertIn('src/Feature.cs: Feature::Run', result['unlistedModifiedMethods'])
         self.assertFalse(result['passed'])
+
+    def test_base_branch_changes_are_not_attributed_to_feature(self):
+        def git(*args):
+            return subprocess.check_output(['git', *args], cwd=self.folder, text=True).strip()
+        git('init', '-b', 'main')
+        git('config', 'user.name', 'Gate test')
+        git('config', 'user.email', 'gate@example.invalid')
+        (self.folder / 'Shared.cs').write_text('original')
+        git('add', '.')
+        git('commit', '-qm', 'base')
+        original = git('rev-parse', 'HEAD')
+        git('branch', 'feature')
+        (self.folder / 'Shared.cs').write_text('main only')
+        git('commit', '-qam', 'main advances')
+        git('checkout', '-q', 'feature')
+        (self.folder / 'Feature.cs').write_text('feature')
+        git('add', '.')
+        git('commit', '-qm', 'feature changes')
+        base = load('check_link_coverage').comparison_base('main', self.folder)
+        self.assertEqual(original, base)
+        self.assertEqual('Feature.cs', git('diff', '--name-only', base))
+        (self.folder / 'Shared.cs').write_text('feature also changes shared code')
+        self.assertEqual(['Feature.cs', 'Shared.cs'], git('diff', '--name-only', base).splitlines())
 
 
 class RequirementsGateTests(unittest.TestCase):

@@ -73,7 +73,7 @@ rtk proxy python scripts/check_link_coverage.py artifacts/link-management --outp
 rtk proxy python scripts/check_link_requirements.py artifacts/link-management/feature --output artifacts/link-management/requirements-summary.json
 ```
 
-O check `link-management` exige 100% das linhas/ramificações declaradas, sem arredondar, e todos os cenários backend. O manifesto inclui todo código novo e métodos compartilhados alterados; o gate também compara arquivos/métodos com `origin/main`. O artefato `link-management-evidence` contém TRX, relatórios e ambiente. Cobertura mede execução de código; a matriz de requisitos comprova separadamente os resultados funcionais testados.
+O check `link-management` exige 100% das linhas/ramificações declaradas, sem arredondar, e todos os cenários backend. O manifesto inclui todo código novo e métodos compartilhados alterados; o gate também compara arquivos/métodos com o ancestral comum de `origin/main`. O artefato `link-management-evidence` contém TRX, relatórios e ambiente. Cobertura mede execução de código; a matriz de requisitos comprova separadamente os resultados funcionais testados.
 
 ### Preparação da alocação após restore
 

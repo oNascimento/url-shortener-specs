@@ -9,6 +9,11 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
+def comparison_base(base, root=ROOT):
+    return subprocess.check_output(['git', 'merge-base', base, 'HEAD'], cwd=root,
+                                   text=True, encoding='utf-8').strip()
+
+
 def evaluate(paths, manifest, changed_lines=None):
     files = set(manifest['files']) | set(manifest['methods'])
     found = set()
@@ -61,19 +66,20 @@ def main():
     parser.add_argument('--output', type=pathlib.Path)
     parser.add_argument('--base', default='origin/main')
     args = parser.parse_args()
+    base = comparison_base(args.base)
     manifest = json.loads((ROOT / 'tests/link-management-coverage.json').read_text())
     def git(*command):
         return subprocess.check_output(['git', *command], cwd=ROOT, text=True, encoding='utf-8')
     changed = {}
     source = None
-    for line in git('diff', '--no-ext-diff', '--unified=0', args.base, '--', 'src').splitlines():
+    for line in git('diff', '--no-ext-diff', '--unified=0', base, '--', 'src').splitlines():
         if line.startswith('+++ b/'):
             source = line[6:]
         match = re.match(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@', line)
         if match and source and source.endswith('.cs'):
             start, count = int(match[1]), int(match[2] or 1)
             changed.setdefault(source, set()).update(range(start, start + count))
-    new_sources = set(git('diff', '--name-only', '--diff-filter=A', args.base, '--', 'src').splitlines())
+    new_sources = set(git('diff', '--name-only', '--diff-filter=A', base, '--', 'src').splitlines())
     new_sources.update(git('ls-files', '--others', '--exclude-standard', '--', 'src').splitlines())
     new_sources = {f for f in new_sources if f.endswith('.cs')}
     result = evaluate(list(args.results.rglob('coverage.json')), manifest, changed)

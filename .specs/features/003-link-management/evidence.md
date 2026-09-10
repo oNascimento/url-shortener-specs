@@ -2,7 +2,7 @@
 
 **100% of feature 003’s backend scope implemented and verified.** Esta conclusão é limitada ao backend aprovado: RF-06–10 e RF-17–18 nas parcelas de validação, persistência, API, autorização, paginação, estado e alocação. Interface, redirecionamento/eventos e recuperação operacional integral permanecem dependências explicitadas abaixo.
 
-Código funcional medido localmente: [`2e95d7d`](https://github.com/oNascimento/url-shortener-specs/commit/2e95d7dcc34480c0beab96f29dbcaa52bd7fa37c). Revisões posteriores acrescentam rastreabilidade e removem imports sem uso; os checks do PR verificam a revisão atual.
+Código funcional medido localmente: [`2e95d7d`](https://github.com/oNascimento/url-shortener-specs/commit/2e95d7dcc34480c0beab96f29dbcaa52bd7fa37c). Revisões posteriores acrescentam rastreabilidade, corrigem a comparação do gate com o ancestral comum e removem imports sem uso; os checks do PR verificam a revisão atual.
 
 PR: [#7](https://github.com/oNascimento/url-shortener-specs/pull/7). [Checks e artefatos da revisão atual](https://github.com/oNascimento/url-shortener-specs/pull/7/checks) identificam o SHA de cada execução remota. Artefatos: `link-management-evidence` (cobertura/matriz/ambiente) e `foundation-test-results` (regressões/smoke).
 
@@ -15,7 +15,7 @@ Execução local em 9–10 de setembro de 2026: Windows, .NET SDK 10.0.400, Dock
 | Feature 003: unitários e integração HTTP/PostgreSQL/Jobs | 56 aprovados, 0 falhas, 0 ignorados |
 | Regressões da autenticação | 76 aprovados, 0 falhas, 0 ignorados |
 | Regressões da fundação | 9 aprovados, 0 falhas, 0 ignorados |
-| Testes dos gates de evidência | 7 aprovados |
+| Testes dos gates de evidência | 8 aprovados |
 | Frontend: precisão de IDs/contagens | 2 aprovados; geração e build aprovados |
 | Linhas do escopo de implementação | **514/514 — 100%** |
 | Ramificações do escopo de implementação | **288/288 — 100%** |
@@ -31,7 +31,7 @@ Relatórios finais da feature/autenticação e resumos em `artifacts/link-202609
 
 ## Rastreabilidade verificável
 
-O [manifesto de requisitos](../../../tests/link-management-requirements.json) liga cada parcela a métodos de teste existentes. O gate lê TRX e reprova ausência, falha ou teste ignorado. O [manifesto de cobertura](../../../tests/link-management-coverage.json) inclui todos os arquivos backend novos e métodos compartilhados alterados integralmente, incluindo migrações e inicialização da API/Jobs. O gate compara esse escopo com `origin/main`, exige arquivos/métodos presentes e combina hits sem duplicar denominadores. Nenhuma linha ou ramificação descoberta permanece sem execução; SQL é verificado por resultados e constraints em PostgreSQL real.
+O [manifesto de requisitos](../../../tests/link-management-requirements.json) liga cada parcela a métodos de teste existentes. O gate lê TRX e reprova ausência, falha ou teste ignorado. O [manifesto de cobertura](../../../tests/link-management-coverage.json) inclui todos os arquivos backend novos e métodos compartilhados alterados integralmente, incluindo migrações e inicialização da API/Jobs. O gate compara esse escopo com o ancestral comum de `origin/main`, exige arquivos/métodos presentes e combina hits sem duplicar denominadores. Nenhuma linha ou ramificação descoberta permanece sem execução; SQL é verificado por resultados e constraints em PostgreSQL real.
 
 | Requisito / tarefa | Evidência automatizada |
 |---|---|
