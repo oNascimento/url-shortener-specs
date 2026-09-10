@@ -65,6 +65,7 @@ services:
     build: {context: ., dockerfile: web/Dockerfile}
   proxy:
     image: caddy:2.10.2-alpine
+    profiles: ['proxy']
     networks:
       default: {ipv4_address: 172.29.0.10}
     ports: ['127.0.0.1:443:443']

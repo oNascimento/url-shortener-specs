@@ -10,6 +10,7 @@ docker compose up -d postgres registry rabbitmq mailpit collector loki prometheu
 docker compose build
 docker compose run --rm jobs --migrate
 docker compose up -d
+docker compose --profile proxy up -d proxy
 ```
 
 O bootstrap cria `.env` uma única vez com senhas aleatórias. A senha administrativa do Grafana fica nesse arquivo. Nunca colar seu conteúdo em logs, issues ou PRs. Não alterar essas senhas depois de criar os volumes sem rotacioná-las nos respectivos serviços.
