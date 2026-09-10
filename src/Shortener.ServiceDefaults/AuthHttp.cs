@@ -42,7 +42,8 @@ public sealed class AuthHttp(RequestDelegate next)
         else if (context.Request.Path.StartsWithSegments("/api/v1") && context.User.Identity?.IsAuthenticated == true
             && Guid.TryParse(context.User.FindFirst("sub")?.Value, out var userId))
         {
-            if (await RejectLimitedAsync(context, limiter, [AuthRateLimits.ForUser(userId)])) return;
+            if (await RejectLimitedAsync(context, limiter, [AuthRateLimits.ForUser(userId,
+                context.Request.Method == "POST" && context.Request.Path.Value!.TrimEnd('/').Equals("/api/v1/links", StringComparison.OrdinalIgnoreCase))])) return;
         }
         await next(context);
     }

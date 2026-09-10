@@ -2,11 +2,14 @@ using Microsoft.AspNetCore.Antiforgery;
 using Shortener.Application;
 using Shortener.Infrastructure;
 using Shortener.ServiceDefaults;
+using Shortener.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddFoundation("shortener-api");
+builder.Services.AddLinkManagement(builder.Configuration);
 var app = builder.Build();
 app.UseFoundation();
+app.MapLinkManagement();
 
 app.MapGet("/api/v1/auth/csrf", (IAntiforgery antiforgery, HttpContext http) =>
     Results.Ok(new { requestToken = antiforgery.GetAndStoreTokens(http).RequestToken }));

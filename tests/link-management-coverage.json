@@ -1,0 +1,21 @@
+{
+  "description": "All handwritten feature implementation plus entire changed production methods. Generated record members without handwritten bodies are not implementation logic.",
+  "files": [
+    "src/Shortener.Domain/Base62.cs",
+    "src/Shortener.Domain/DestinationRules.cs",
+    "src/Shortener.Application/LinkContracts.cs",
+    "src/Shortener.Infrastructure/LinkManagementMigration.cs",
+    "src/Shortener.Infrastructure/LinkSequence.cs",
+    "src/Shortener.Infrastructure/PostgresWriterIsolation.cs",
+    "src/Shortener.Infrastructure/LinkCursor.cs",
+    "src/Shortener.Infrastructure/LinkService.cs",
+    "src/Shortener.Api/LinkEndpoints.cs",
+    "src/Shortener.Api/Program.cs",
+    "src/Shortener.Jobs/Program.cs",
+    "src/Shortener.Jobs/JobCommands.cs"
+  ],
+  "methods": {
+    "src/Shortener.Infrastructure/AuthRateLimits.cs": ["ForUser"],
+    "src/Shortener.ServiceDefaults/AuthHttp.cs": ["InvokeAsync"]
+  }
+}

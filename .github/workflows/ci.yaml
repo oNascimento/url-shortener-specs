@@ -3,6 +3,46 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  link-management:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-dotnet@v4
+        with: {global-json-file: global.json}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: dotnet restore --locked-mode && dotnet build --no-restore -c Debug
+      - name: Feature requirements, concurrency, recovery and coverage
+        run: dotnet test tests/Shortener.LinkManagement.Tests --no-build -c Debug --settings tests/link-management.runsettings --logger trx --results-directory artifacts/link-management/feature
+      - name: Authentication regressions and complete shared-method coverage
+        run: dotnet test tests/Shortener.Authentication.Tests --no-build -c Debug --settings tests/link-management.runsettings --logger trx --results-directory artifacts/link-management/auth
+      - name: Evidence gates
+        run: |
+          python -m unittest discover -s tests/evidence-gates
+          python scripts/check_link_coverage.py artifacts/link-management --output artifacts/link-management/coverage-summary.json
+          python scripts/check_link_requirements.py artifacts/link-management/feature --output artifacts/link-management/requirements-summary.json
+      - name: Record reproducible environment
+        if: always()
+        run: |
+          mkdir -p artifacts/link-management
+          {
+            echo "commit: $GITHUB_SHA"
+            echo "dotnet: $(dotnet --version)"
+            echo "python: $(python --version 2>&1)"
+            echo "docker: $(docker version --format '{{.Server.Version}}')"
+            echo "PostgreSQL: 17.6; xUnit: 2.9.3; Coverlet: 6.0.4; build: Debug"
+          } > artifacts/link-management/environment.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: link-management-evidence
+          path: |
+            artifacts/link-management/**
+            tests/link-management-coverage.json
+            tests/link-management-requirements.json
+            tests/link-management.runsettings
   foundation:
     runs-on: ubuntu-latest
     timeout-minutes: 30
