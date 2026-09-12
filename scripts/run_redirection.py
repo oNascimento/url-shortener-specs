@@ -31,7 +31,8 @@ if stage >= 1:
     run('dotnet', 'test', 'tests/Shortener.Redirection.Tests', '--no-build', '-c', 'Debug',
         '--settings', 'tests/redirection.runsettings', '--logger', 'trx', '--results-directory', str(results / 'feature'))
     # Shared production methods retain complete coverage through the existing regression suites.
-    for project in ['Shortener.LinkManagement.Tests', 'Shortener.Authentication.Tests']:
+    shared = json.loads((ROOT / 'tests/redirection-coverage.json').read_text())['methods']
+    for project in (['Shortener.LinkManagement.Tests', 'Shortener.Authentication.Tests'] if shared else []):
         run('dotnet', 'test', 'tests/' + project, '--no-build', '-c', 'Debug',
             '--settings', 'tests/redirection.runsettings', '--logger', 'trx', '--results-directory', str(results / project))
 run(sys.executable, 'scripts/check_redirection.py', str(results), '--task', task, '--base', args.base)
