@@ -4,7 +4,7 @@ namespace Shortener.Redirector;
 
 public sealed class RedirectMiddleware(RequestDelegate next)
 {
-    public async Task InvokeAsync(HttpContext context, IRedirectResolver resolver)
+    public async Task InvokeAsync(HttpContext context, IRedirectResolver resolver, AccessCapture capture)
     {
         var path = context.Request.Path.Value ?? "";
         if (path is "/health/live" or "/health/ready")
@@ -56,6 +56,7 @@ public sealed class RedirectMiddleware(RequestDelegate next)
             await ProblemAsync(context, 410, "gone");
             return;
         }
+        if (HttpMethods.IsGet(context.Request.Method)) await capture.CaptureAsync(context, link);
         context.Response.StatusCode = 302;
         context.Response.Headers.Location = link.Destination;
         context.Response.Headers["Referrer-Policy"] = "no-referrer";
