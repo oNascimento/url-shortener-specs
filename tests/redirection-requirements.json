@@ -1,9 +1,10 @@
 {
-  "stage": 1,
+  "stage": 2,
   "requirements": [
     {"id":"RF-19.http", "requirement":"RF-19", "stage":1, "scenarios":["T09"], "tests":["Shortener.Redirection.Tests.ResolutionTests.Exact_codes_methods_and_original_destination_match_contract"]},
     {"id":"RF-20.states", "requirement":"RF-20", "stage":1, "scenarios":["T09"], "tests":["Shortener.Redirection.Tests.ResolutionTests.Committed_states_and_tombstones_are_generic_410_without_cache"]},
-    {"id":"RF-20.resolution", "requirement":"RF-20", "stage":1, "scenarios":["T09"], "tests":["Shortener.Redirection.Tests.ResolutionTests.Resolution_failure_is_503_and_public_requests_do_not_authenticate"]}
+    {"id":"RF-20.resolution", "requirement":"RF-20", "stage":1, "scenarios":["T09"], "tests":["Shortener.Redirection.Tests.ResolutionTests.Resolution_failure_is_503_and_public_requests_do_not_authenticate"]},
+    {"id":"RF-21.capture", "requirement":"RF-21", "stage":2, "scenarios":["T09","T10"], "tests":["Shortener.Redirection.Tests.CaptureTests.Forwarded_IP_requires_trusted_peer_network_and_hop_limit", "Shortener.Redirection.Tests.CaptureTests.Eligible_GETs_have_distinct_immutable_envelopes_and_others_publish_nothing"]}
   ],
   "externalAcceptance": {
     "AF-04": "F004 proves distinct producer identities; durable deduplication and counting belong to F005.",
