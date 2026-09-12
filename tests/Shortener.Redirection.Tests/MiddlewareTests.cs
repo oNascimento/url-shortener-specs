@@ -3,15 +3,18 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using IRedirectResolver = Redirector::Shortener.Redirector.IRedirectResolver;
 using ResolvedLink = Redirector::Shortener.Redirector.ResolvedLink;
 using RedirectMiddleware = Redirector::Shortener.Redirector.RedirectMiddleware;
+using AccessCapture = Redirector::Shortener.Redirector.AccessCapture;
 
 namespace Shortener.Redirection.Tests;
 
 public sealed class MiddlewareTests
 {
+    private static readonly AccessCapture Capture = new(TimeProvider.System, NullLogger<AccessCapture>.Instance);
     [Fact]
     public async Task Health_paths_bypass_public_resolution_and_cancelled_visitors_abort()
     {
@@ -22,7 +25,7 @@ public sealed class MiddlewareTests
         {
             var context = new DefaultHttpContext();
             context.Request.Path = path;
-            await middleware.InvokeAsync(context, resolver);
+            await middleware.InvokeAsync(context, resolver, Capture);
         }
         Assert.Equal(2, next);
         Assert.Equal(0, resolver.Calls);
@@ -31,7 +34,7 @@ public sealed class MiddlewareTests
         cancelled.Features.Set<IHttpRequestLifetimeFeature>(lifetime);
         cancelled.Request.Path = "/z";
         cancelled.Request.Method = "GET";
-        await middleware.InvokeAsync(cancelled, resolver);
+        await middleware.InvokeAsync(cancelled, resolver, Capture);
         Assert.True(lifetime.Aborted);
         Assert.Equal(1, resolver.Calls);
     }
@@ -44,7 +47,7 @@ public sealed class MiddlewareTests
         var context = new DefaultHttpContext { RequestServices = services };
         context.Request.Method = "GET";
         context.Response.Body = new MemoryStream();
-        await new RedirectMiddleware(_ => throw new InvalidOperationException()).InvokeAsync(context, new Resolver());
+        await new RedirectMiddleware(_ => throw new InvalidOperationException()).InvokeAsync(context, new Resolver(), Capture);
         Assert.Equal(404, context.Response.StatusCode);
         context.Response.Body.Position = 0;
         Assert.Contains(activity.TraceId.ToString(), await new StreamReader(context.Response.Body).ReadToEndAsync());
