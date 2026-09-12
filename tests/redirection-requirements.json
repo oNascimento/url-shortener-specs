@@ -1,0 +1,9 @@
+{
+  "stage": 0,
+  "requirements": [],
+  "externalAcceptance": {
+    "AF-04": "F004 proves distinct producer identities; durable deduplication and counting belong to F005.",
+    "AF-06": "F004 proves redirect availability; collection incidents and dashboard belong to F005/F006.",
+    "operations": "PostgreSQL failover, complete load and disaster recovery belong to F008."
+  }
+}

@@ -1,9 +1,66 @@
 name: CI
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
+  documents:
+    runs-on: ubuntu-latest
+    outputs:
+      functional: ${{ steps.scope.outputs.functional }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python scripts/validate_deliverables.py && python -m unittest discover -s tests/evidence-gates
+      - id: scope
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          python - <<'PY'
+          import os, subprocess
+          base = os.environ.get('BASE', '')
+          files = subprocess.check_output(['git', 'diff', '--name-only', base + '...HEAD'], text=True).splitlines() if base and set(base) != {'0'} else ['src/']
+          functional = any(not f.endswith('.md') for f in files)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('functional=' + str(functional).lower() + '\n')
+          PY
+  redirection:
+    needs: documents
+    if: needs.documents.outputs.functional == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-dotnet@v4
+        with: {global-json-file: global.json}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: dotnet restore --locked-mode && dotnet build --no-restore -c Debug
+      - name: Task and cumulative coverage, real integrations and requirements
+        env:
+          EVIDENCE_BASE: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: python scripts/run_redirection.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: redirection-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 90
+          path: |
+            artifacts/redirection/**
+            tests/redirection-*.json
+            tests/redirection.runsettings
   link-management:
+    needs: documents
+    if: needs.documents.outputs.functional == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -44,6 +101,8 @@ jobs:
             tests/link-management-requirements.json
             tests/link-management.runsettings
   foundation:
+    needs: documents
+    if: needs.documents.outputs.functional == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
