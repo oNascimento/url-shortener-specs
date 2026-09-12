@@ -10,4 +10,5 @@
 <Project Path="tests/Shortener.Foundation.Tests/Shortener.Foundation.Tests.csproj" />
 <Project Path="tests/Shortener.Authentication.Tests/Shortener.Authentication.Tests.csproj" />
 <Project Path="tests/Shortener.LinkManagement.Tests/Shortener.LinkManagement.Tests.csproj" />
+<Project Path="tests/Shortener.Redirection.Tests/Shortener.Redirection.Tests.csproj" />
 </Solution>
