@@ -6,6 +6,8 @@ x-app: &app
     ConnectionStrings__Primary: Host=postgres;Database=shortener;Username=shortener;Password=${POSTGRES_PASSWORD:?Run bootstrap};GSS Encryption Mode=Disable
     ConnectionStrings__Registry: Host=registry;Database=registry;Username=registry;Password=${REGISTRY_PASSWORD:?Run bootstrap};GSS Encryption Mode=Disable
     Messaging__Host: rabbitmq
+    Messaging__UserName: shortener
+    Messaging__Password: ${RABBITMQ_PASSWORD:?Run bootstrap}
     Email__Host: mailpit
     Origins__Management: https://localhost
     Origins__Short: https://s.localhost
