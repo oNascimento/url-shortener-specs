@@ -1,6 +1,10 @@
 {
-  "stage": 0,
-  "requirements": [],
+  "stage": 1,
+  "requirements": [
+    {"id":"RF-19.http", "requirement":"RF-19", "stage":1, "scenarios":["T09"], "tests":["Shortener.Redirection.Tests.ResolutionTests.Exact_codes_methods_and_original_destination_match_contract"]},
+    {"id":"RF-20.states", "requirement":"RF-20", "stage":1, "scenarios":["T09"], "tests":["Shortener.Redirection.Tests.ResolutionTests.Committed_states_and_tombstones_are_generic_410_without_cache"]},
+    {"id":"RF-20.resolution", "requirement":"RF-20", "stage":1, "scenarios":["T09"], "tests":["Shortener.Redirection.Tests.ResolutionTests.Resolution_failure_is_503_and_public_requests_do_not_authenticate"]}
+  ],
   "externalAcceptance": {
     "AF-04": "F004 proves distinct producer identities; durable deduplication and counting belong to F005.",
     "AF-06": "F004 proves redirect availability; collection incidents and dashboard belong to F005/F006.",

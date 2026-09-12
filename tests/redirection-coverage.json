@@ -1,5 +1,5 @@
 {
   "description": "F004 handwritten files and entire changed shared methods. Cumulative and per-task lines/branches >=95%.",
-  "files": [],
+  "files": ["src/Shortener.Redirector/Program.cs", "src/Shortener.Redirector/RedirectMiddleware.cs", "src/Shortener.Redirector/RedirectResolver.cs"],
   "methods": {}
 }
