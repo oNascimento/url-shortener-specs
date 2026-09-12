@@ -14,7 +14,7 @@ def comparison_base(base, root=ROOT):
                                    text=True, encoding='utf-8').strip()
 
 
-def evaluate(paths, manifest, changed_lines=None):
+def evaluate(paths, manifest, changed_lines=None, threshold=100):
     files = set(manifest['files']) | set(manifest['methods'])
     found = set()
     methods_found = set()
@@ -52,7 +52,9 @@ def evaluate(paths, manifest, changed_lines=None):
     missing_methods = sorted((f, m) for f, names in manifest['methods'].items() for m in names if (f, m) not in methods_found)
     uncovered_lines = [f'{f}:{n}' for (f, n), hit in sorted(lines.items()) if not hit]
     uncovered_branches = [f'{k[0]}:{k[2]} ({k[1]}, path {k[5]})' for k, hit in sorted(branches.items()) if not hit]
-    return {'passed': bool(lines) and bool(branches) and not (missing or missing_methods or uncovered_lines or uncovered_branches or unlisted),
+    sufficient = (bool(lines) and sum(lines.values()) * 100 >= threshold * len(lines)
+                  and sum(branches.values()) * 100 >= threshold * len(branches))
+    return {'passed': sufficient and not (missing or missing_methods or unlisted),
             'lines': {'covered': sum(lines.values()), 'total': len(lines)},
             'branches': {'covered': sum(branches.values()), 'total': len(branches)},
             'missingFiles': missing, 'missingMethods': missing_methods,
@@ -82,8 +84,17 @@ def main():
     new_sources = set(git('diff', '--name-only', '--diff-filter=A', base, '--', 'src').splitlines())
     new_sources.update(git('ls-files', '--others', '--exclude-standard', '--', 'src').splitlines())
     new_sources = {f for f in new_sources if f.endswith('.cs')}
+    from feature_evidence import ownership_errors, known_manifests
     result = evaluate(list(args.results.rglob('coverage.json')), manifest, changed)
-    result['unlistedFiles'] = sorted((set(changed) - set(manifest['files']) - set(manifest['methods'])) | (new_sources - set(manifest['files'])))
+    # Other features own their additions; this feature still requires 100% of its own scope.
+    manifests = known_manifests(ROOT)
+    result['unlistedFiles'] = ownership_errors(changed, new_sources, manifests)
+    foreign = [m for m in manifests if m != manifest]
+    result['unlistedModifiedMethods'] = [entry for entry in result['unlistedModifiedMethods']
+        if not any(entry.split(': ', 1)[0] in m['files'] or any(name in entry for name in
+                   m['methods'].get(entry.split(': ', 1)[0], [])) for m in foreign)]
+    result['passed'] = (bool(result['lines']['total']) and not any(result[key] for key in
+        ('missingFiles', 'missingMethods', 'uncoveredLines', 'uncoveredBranches', 'unlistedModifiedMethods')))
     result['passed'] = result['passed'] and not result['unlistedFiles']
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
