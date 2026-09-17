@@ -24,19 +24,29 @@ public sealed class RabbitTests(RabbitEnvironment rabbit, LinkEnvironment links)
         var settings = broker with { Host = "127.0.0.1", Port = proxy.Port };
         await using var harness = new RabbitHarness(settings);
         await harness.StartAsync();
-        var publisher = new BoundedAccessPublisher(harness.Transport, TimeProvider.System, settings);
+        var observed = new ObservedTransport(harness.Transport);
+        var publisher = new BoundedAccessPublisher(observed, TimeProvider.System, settings);
         Assert.Equal(PublishOutcome.Confirmed, await publisher.PublishAsync(PublisherTests.Message, default));
         proxy.Pause();
         var timer = Stopwatch.StartNew();
         Assert.Equal(PublishOutcome.Unknown, await publisher.PublishAsync(PublisherTests.Message, default).WaitAsync(TimeSpan.FromSeconds(2)));
         timer.Stop();
         Console.WriteLine($"T13 real confirm timeout: {timer.Elapsed.TotalMilliseconds:F3} ms; configured budget: 100 ms");
+        // Keep confirms blocked until the transport observes cancellation, independently of scheduler order.
+        Assert.Equal(PublishOutcome.Unknown, await observed.Attempt.WaitAsync(TimeSpan.FromSeconds(5)));
         proxy.Resume();
         await RabbitEnvironment.WaitUntil(() => harness.Transport.Ready);
         Assert.Equal(PublishOutcome.Confirmed, await publisher.PublishAsync(PublisherTests.Message, default));
         await using var inspection = await RabbitEnvironment.Factory(broker).CreateConnectionAsync();
         await using var channel = await inspection.CreateChannelAsync();
         Assert.Equal(3u, await channel.MessageCountAsync(RabbitTransport.Queue));
+    }
+
+    private sealed class ObservedTransport(RabbitTransport transport) : Redirector::Shortener.Redirector.IConfirmTransport
+    {
+        public Task<PublishOutcome> Attempt { get; private set; } = Task.FromResult(PublishOutcome.Unknown);
+        public Task<PublishOutcome> PublishAsync(ReadOnlyMemory<byte> body, CancellationToken cancellationToken)
+            => Attempt = transport.PublishAsync(body, cancellationToken);
     }
 
     [Fact]
