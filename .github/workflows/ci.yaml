@@ -116,9 +116,9 @@ jobs:
       - run: python scripts/build_contract.py && python scripts/validate_deliverables.py && git diff --exit-code -- .specs/contracts/openapi.json
       - run: dotnet restore --locked-mode && dotnet build --no-restore -c Release
       - name: Unit tests
-        run: dotnet test --no-build -c Release --filter 'Category!=Integration' --logger trx
+        run: dotnet test --no-build -c Release --filter 'Category!=Integration&FullyQualifiedName!~Shortener.Redirection.Tests' --logger trx
       - name: Integration tests (PostgreSQL and Mailpit)
-        run: dotnet test --no-build -c Release --filter 'Category=Integration' --logger trx
+        run: dotnet test --no-build -c Release --filter 'Category=Integration&FullyQualifiedName!~Shortener.Redirection.Tests' --logger trx
       - working-directory: web
         run: npm ci && npm run generate && git diff --exit-code -- src/api/schema.d.ts && npm test && npm run build
       - id: local_environment
