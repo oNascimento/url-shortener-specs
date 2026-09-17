@@ -1,13 +1,93 @@
 {
-  "stage": 3,
-  "taskBases": {"3": "065902c"},
+  "stage": 4,
+  "taskBases": {
+    "3": "065902c"
+  },
   "requirements": [
-    {"id":"RF-19.http", "requirement":"RF-19", "stage":1, "scenarios":["T09"], "tests":["Shortener.Redirection.Tests.ResolutionTests.Exact_codes_methods_and_original_destination_match_contract"]},
-    {"id":"RF-20.states", "requirement":"RF-20", "stage":1, "scenarios":["T09"], "tests":["Shortener.Redirection.Tests.ResolutionTests.Committed_states_and_tombstones_are_generic_410_without_cache"]},
-    {"id":"RF-20.resolution", "requirement":"RF-20", "stage":1, "scenarios":["T09"], "tests":["Shortener.Redirection.Tests.ResolutionTests.Resolution_failure_is_503_and_public_requests_do_not_authenticate"]},
-    {"id":"RF-21.capture", "requirement":"RF-21", "stage":2, "scenarios":["T09","T10"], "tests":["Shortener.Redirection.Tests.CaptureTests.Forwarded_IP_requires_trusted_peer_network_and_hop_limit", "Shortener.Redirection.Tests.CaptureTests.Eligible_GETs_have_distinct_immutable_envelopes_and_others_publish_nothing"]},
-    {"id":"RF-19.publish", "requirement":"RF-19", "stage":3, "scenarios":["T13"], "tests":["Shortener.Redirection.Tests.RabbitTests.Confirmed_messages_are_persistent_and_redelivery_preserves_exact_envelope", "Shortener.Redirection.Tests.RabbitTests.Mandatory_returns_and_queue_overflow_are_rejected_even_when_exchange_acks"]},
-    {"id":"RF-20.collection", "requirement":"RF-20", "stage":3, "scenarios":["T13"], "tests":["Shortener.Redirection.Tests.RabbitTests.Broker_failure_and_startup_without_broker_preserve_HTTP_and_recover", "Shortener.Redirection.Tests.RabbitTests.Lost_real_confirms_are_unknown_and_capacity_recovers_without_republishing", "Shortener.Redirection.Tests.PublisherTests.Single_deadline_includes_capacity_and_late_confirm_never_releases_an_occupied_slot_early", "Shortener.Redirection.Tests.PublisherTests.Late_failure_is_observed_and_transport_failures_are_unknown"]}
+    {
+      "id": "RF-19.http",
+      "requirement": "RF-19",
+      "stage": 1,
+      "scenarios": [
+        "T09"
+      ],
+      "tests": [
+        "Shortener.Redirection.Tests.ResolutionTests.Exact_codes_methods_and_original_destination_match_contract"
+      ]
+    },
+    {
+      "id": "RF-20.states",
+      "requirement": "RF-20",
+      "stage": 1,
+      "scenarios": [
+        "T09"
+      ],
+      "tests": [
+        "Shortener.Redirection.Tests.ResolutionTests.Committed_states_and_tombstones_are_generic_410_without_cache"
+      ]
+    },
+    {
+      "id": "RF-20.resolution",
+      "requirement": "RF-20",
+      "stage": 1,
+      "scenarios": [
+        "T09"
+      ],
+      "tests": [
+        "Shortener.Redirection.Tests.ResolutionTests.Resolution_failure_is_503_and_public_requests_do_not_authenticate"
+      ]
+    },
+    {
+      "id": "RF-21.capture",
+      "requirement": "RF-21",
+      "stage": 2,
+      "scenarios": [
+        "T09",
+        "T10"
+      ],
+      "tests": [
+        "Shortener.Redirection.Tests.CaptureTests.Forwarded_IP_requires_trusted_peer_network_and_hop_limit",
+        "Shortener.Redirection.Tests.CaptureTests.Eligible_GETs_have_distinct_immutable_envelopes_and_others_publish_nothing"
+      ]
+    },
+    {
+      "id": "RF-19.publish",
+      "requirement": "RF-19",
+      "stage": 3,
+      "scenarios": [
+        "T13"
+      ],
+      "tests": [
+        "Shortener.Redirection.Tests.RabbitTests.Confirmed_messages_are_persistent_and_redelivery_preserves_exact_envelope",
+        "Shortener.Redirection.Tests.RabbitTests.Mandatory_returns_and_queue_overflow_are_rejected_even_when_exchange_acks"
+      ]
+    },
+    {
+      "id": "RF-20.collection",
+      "requirement": "RF-20",
+      "stage": 3,
+      "scenarios": [
+        "T13"
+      ],
+      "tests": [
+        "Shortener.Redirection.Tests.RabbitTests.Broker_failure_and_startup_without_broker_preserve_HTTP_and_recover",
+        "Shortener.Redirection.Tests.RabbitTests.Lost_real_confirms_are_unknown_and_capacity_recovers_without_republishing",
+        "Shortener.Redirection.Tests.PublisherTests.Single_deadline_includes_capacity_and_late_confirm_never_releases_an_occupied_slot_early",
+        "Shortener.Redirection.Tests.PublisherTests.Late_failure_is_observed_and_transport_failures_are_unknown"
+      ]
+    },
+    {
+      "id": "RF-20.telemetry",
+      "requirement": "RF-20",
+      "stage": 4,
+      "scenarios": [
+        "T13"
+      ],
+      "tests": [
+        "Shortener.Redirection.Tests.TelemetryTests.Metrics_distinguish_outcomes_and_capture_failures_without_sensitive_content",
+        "Shortener.Redirection.Tests.TelemetryTests.Readiness_uses_primary_resolution_only_and_telemetry_failure_preserves_302"
+      ]
+    }
   ],
   "externalAcceptance": {
     "AF-04": "F004 proves distinct producer identities; durable deduplication and counting belong to F005.",

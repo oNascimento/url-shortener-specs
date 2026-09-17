@@ -1,5 +1,15 @@
 {
   "description": "F004 handwritten files and entire changed shared methods. Cumulative and per-task lines/branches >=95%.",
-  "files": ["src/Shortener.Redirector/Program.cs", "src/Shortener.Redirector/RedirectMiddleware.cs", "src/Shortener.Redirector/RedirectResolver.cs", "src/Shortener.Redirector/AccessCapture.cs", "src/Shortener.Redirector/RedirectForwarding.cs", "src/Shortener.Redirector/BoundedAccessPublisher.cs", "src/Shortener.Redirector/RabbitTransport.cs"],
+  "files": [
+    "src/Shortener.Redirector/Program.cs",
+    "src/Shortener.Redirector/RedirectMiddleware.cs",
+    "src/Shortener.Redirector/RedirectResolver.cs",
+    "src/Shortener.Redirector/AccessCapture.cs",
+    "src/Shortener.Redirector/RedirectForwarding.cs",
+    "src/Shortener.Redirector/BoundedAccessPublisher.cs",
+    "src/Shortener.Redirector/RabbitTransport.cs",
+    "src/Shortener.Redirector/RedirectTelemetry.cs",
+    "src/Shortener.Redirector/RedirectHealth.cs"
+  ],
   "methods": {}
 }
