@@ -1,5 +1,5 @@
 {
-  "stage": 4,
+  "stage": 5,
   "taskBases": {
     "3": "065902c"
   },
@@ -86,6 +86,45 @@
       "tests": [
         "Shortener.Redirection.Tests.TelemetryTests.Metrics_distinguish_outcomes_and_capture_failures_without_sensitive_content",
         "Shortener.Redirection.Tests.TelemetryTests.Readiness_uses_primary_resolution_only_and_telemetry_failure_preserves_302"
+      ]
+    },
+    {
+      "id": "RF-19.end_to_end",
+      "requirement": "RF-19",
+      "stage": 5,
+      "scenarios": [
+        "T09",
+        "T10",
+        "T13"
+      ],
+      "tests": [
+        "Shortener.Redirection.Tests.EndToEndTests.Creation_proxy_two_redirectors_and_three_node_quorum_preserve_contract_during_failures"
+      ]
+    },
+    {
+      "id": "RF-20.end_to_end",
+      "requirement": "RF-20",
+      "stage": 5,
+      "scenarios": [
+        "T09",
+        "T10",
+        "T13"
+      ],
+      "tests": [
+        "Shortener.Redirection.Tests.EndToEndTests.Creation_proxy_two_redirectors_and_three_node_quorum_preserve_contract_during_failures"
+      ]
+    },
+    {
+      "id": "RF-21.end_to_end",
+      "requirement": "RF-21",
+      "stage": 5,
+      "scenarios": [
+        "T09",
+        "T10",
+        "T13"
+      ],
+      "tests": [
+        "Shortener.Redirection.Tests.EndToEndTests.Creation_proxy_two_redirectors_and_three_node_quorum_preserve_contract_during_failures"
       ]
     }
   ],

@@ -40,8 +40,15 @@ run(sys.executable, 'scripts/check_redirection.py', str(results), '--task', task
     'python: ' + sys.version, 'platform: ' + sys.platform,
     'PostgreSQL: 17.6; RabbitMQ: 4.1.4-management; xUnit: 2.9.3; Coverlet: 6.0.4; Debug']) + '\n')
 if stage >= 1:
-    run('dotnet', 'test', 'tests/Shortener.Redirection.Tests', '--no-build', '-c', 'Debug',
-        '--settings', 'tests/redirection.runsettings', '--logger', 'trx', '--results-directory', str(results / 'feature'))
+    try:
+        run('dotnet', 'test', 'tests/Shortener.Redirection.Tests', '--no-build', '-c', 'Debug',
+            '--settings', 'tests/redirection.runsettings', '--logger', 'trx', '--results-directory', str(results / 'feature'))
+    finally:
+        # Retain immutable image identities, including failed runs; a tag alone is not provenance.
+        images = ['postgres:17.6', 'rabbitmq:4.1.4-management'] + (['caddy:2.10.2-alpine'] if stage >= 5 else [])
+        inspection = subprocess.run(['docker', 'image', 'inspect', *images,
+            '--format', '{{.Id}} {{json .RepoDigests}}'], text=True, capture_output=True)
+        (results / 'images.txt').write_text(inspection.stdout + inspection.stderr, encoding='utf-8')
     # Shared production methods retain complete coverage through the existing regression suites.
     shared = json.loads((ROOT / 'tests/redirection-coverage.json').read_text())['methods']
     for project in (['Shortener.LinkManagement.Tests', 'Shortener.Authentication.Tests'] if shared else []):
