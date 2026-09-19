@@ -60,10 +60,14 @@ def main():
     matrix = json.loads((ROOT / 'tests/redirection-requirements.json').read_text())
     reports = list(args.results.rglob('coverage.json'))
     feature_base, changed, added = changes(args.feature_base)
-    task_base, task_changed, task_added = changes(args.base)
+    logical_base = matrix.get('taskBases', {}).get(str(stage), args.base)
+    task_base, task_changed, task_added = changes(logical_base)
+    review_base, review_changed, review_added = changes(args.base)
     cumulative = evaluate(reports, manifest, changed, 95) if manifest['files'] or manifest['methods'] else None
     selected = task_manifest(reports, manifest, task_changed, task_added)
     task = evaluate(reports, selected, task_changed, 95) if selected['files'] or selected['methods'] else None
+    review_selected = task_manifest(reports, manifest, review_changed, review_added)
+    review = evaluate(reports, review_selected, review_changed, 95) if review_selected['files'] or review_selected['methods'] else None
     requirement_result = requirements(list(args.results.rglob('*.trx')), matrix, min(stage, 5))
     unowned = ownership_errors(changed, added, known_manifests())
     passed = not unowned and requirement_result['passed']
@@ -71,8 +75,11 @@ def main():
         passed = passed and cumulative is not None and cumulative['passed']
     if task_changed or task_added:
         passed = passed and task is not None and task['passed']
+    if review_changed or review_added:
+        passed = passed and review is not None and review['passed']
     result = {'passed': bool(passed), 'taskId': args.task, 'featureBase': feature_base, 'taskBase': task_base,
               'fingerprint': identity, 'threshold': 95, 'cumulative': cumulative, 'task': task,
+              'reviewBase': review_base, 'review': review,
               'requirements': requirement_result, 'unownedSources': unowned,
               'externalAcceptance': matrix['externalAcceptance']}
     (args.results / 'summary.json').write_text(json.dumps(result, indent=2) + '\n')

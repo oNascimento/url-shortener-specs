@@ -1,6 +1,6 @@
 # Tarefas — 004
 
-Sete tarefas e sete PRs encadeados. Estado formal exige dependências concluídas; implementação verificada consta dos parciais. Gates funcionais: >=95% linhas e branches acumulados e da tarefa, mais todos os cenários obrigatérios. Cada entrega inclui testes e evidência. é significa nenhuma dependência.
+Sete tarefas e sete PRs encadeados. Estado formal exige dependências concluídas; implementação verificada consta dos parciais e da [evidência geral](evidence.md). Gates funcionais: >=95% linhas e branches acumulados e da tarefa, mais todos os cenários obrigatórios. Cada entrega inclui testes e evidência. — significa nenhuma dependência.
 
 | Estado | ID | Tarefa | Depende de | Evidência para concluir |
 |---|---|---|---|---|
