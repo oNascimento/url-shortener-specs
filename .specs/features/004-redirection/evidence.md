@@ -30,7 +30,7 @@ As três ramificações descobertas continuam no denominador: canal fechado ante
 | F004-T03 | [#11](https://github.com/oNascimento/url-shortener-specs/pull/11), main | [T03](evidence/F004-T03.md) | Draft; CI verde |
 | F004-T04 | [#12](https://github.com/oNascimento/url-shortener-specs/pull/12), t03 | [T04](evidence/F004-T04.md) | Draft; CI verde |
 | F004-T05 | [#13](https://github.com/oNascimento/url-shortener-specs/pull/13), t04 | [T05](evidence/F004-T05.md) | Draft; CI verde |
-| F004-T06 | PR em abertura, t05 | Parcial no commit documental da T06 | Consolidação documental |
+| F004-T06 | [#14](https://github.com/oNascimento/url-shortener-specs/pull/14), t05 | [T06](evidence/F004-T06.md) | Draft; consolidação exclusivamente documental |
 
 Os três merges de 12/09/2026 aconteceram em sequência sem reposicionar as bases: somente T00 chegou à main. T03 transporta T01/T02 já revisadas, preservando sete PRs. Seu gate mede o escopo real da revisão contra main e, adicionalmente, o escopo lógico da T03 contra `065902c`. Nenhum merge remoto foi realizado pelo agente. Depois de cada squash aprovado, as branches descendentes devem ser reposicionadas preservando seus commits e as bases dos PRs atualizadas.
 
@@ -45,6 +45,8 @@ Os três merges de 12/09/2026 aconteceram em sequência sem reposicionar as base
 | T06 | Sem nova execução funcional | Não aplicável: somente documentos | Referência compatível à medição final T05 |
 
 Cada linha é uma execução independente, identificada no respectivo parcial. Variações de hits em ramos concorrentes entre execuções não autorizam combinar implementações nem somar percentuais. T05 manteve o gate acumulado obrigatório mesmo sem escopo novo de produção.
+
+A T06 auditou os seis parciais e reavaliou cópias byte a byte do artefato final T05, em `artifacts/redirection/F004-T06/20260919T005456968128Z`. O fingerprint atual é idêntico ao da execução de origem; `reuse.json` registra hashes de cada arquivo copiado, o SHA original e a ausência de nova execução funcional. O gate da consolidação passou com os mesmos 26 resultados e 348/348 linhas, 134/137 branches. [Checks documentais da T06](https://github.com/oNascimento/url-shortener-specs/pull/14/checks) validam a documentação final sem repetir os jobs funcionais.
 
 ## Matriz de requisitos e cenários
 
@@ -89,6 +91,6 @@ Os primeiros builds Docker locais encontraram NU1301/PartialChain. Os smokes loc
 - AF-04 está comprovado quanto à geração de identidades distintas e preservação do envelope em redelivery. Deduplicação durável e contagem pertencem à 005.
 - AF-06 está comprovado quanto à continuidade do 302. O aviso de incidente no painel depende de 005/006.
 - Worker, agregação, painel, failover PostgreSQL, carga global e recuperação operacional integral não foram acrescentados à 004.
-- A implementação está verificada; a liberação formal exige revisão da T06, aprovação explícita dos PRs restantes, integração ordenada e reconciliação da dependência histórica. O próximo ponto é a revisão dos PRs #11 → #12 → #13 → T06.
+- A implementação e a consolidação estão verificadas; a liberação formal exige revisão da T06, aprovação explícita dos PRs restantes, integração ordenada e reconciliação da dependência histórica. O próximo ponto é a revisão dos PRs #11 → #12 → #13 → #14.
 
 [Especificação](spec.md) · [Plano](plan.md) · [Tarefas](tasks.md)
