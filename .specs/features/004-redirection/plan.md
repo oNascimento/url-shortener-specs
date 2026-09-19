@@ -33,7 +33,7 @@ Branches feat/004-redirection-t00 até t06. T00 parte da main atualizada; descen
 
 >=95% linhas e >=95% branches pela união de unitários e integrações em cada PR funcional: escopo acumulado da 004 e escopo da tarefa. Arquivos novos completos e métodos compartilhados alterados completos, inclusive inicialização; sem excluir lógica manual. Manter 100% da 003. Todo C# alterado deve pertencer a manifesto; sobreposição compartilhada é permitida. Base real do PR para tarefa e ancestral da main para acumulado.
 
-xUnit, Coverlet, HTTP e PostgreSQL/RabbitMQ reais via Testcontainers. Matriz executável associa requisitos/cenários a testes, ativada progressivamente. Ausência/falha/skip reprova; cobertura não substitui comportamento. Relatérios ausentes, escopos omitidos ou medições incompatéveis reprovam. Comparar percentuais sem arredondamento.
+xUnit, Coverlet, HTTP e PostgreSQL/RabbitMQ reais via Testcontainers. Matriz executável associa requisitos/cenários a testes, ativada progressivamente. Ausência/falha/skip reprova; cobertura não substitui comportamento. Relatórios ausentes, escopos omitidos ou medições incompatíveis reprovam. Comparar percentuais sem arredondamento.
 
 - T09: GET/HEAD/métodos, z/Z, código inválido/ausente, todos os estados, falha de primário, headers, query/fragmento e concorrência após commit.
 - T10: IPv4/IPv6/mapped, falsificação, cadeia confiável/hops, IP ausente; dez GETs distintos e nenhuma publicação inelegível.
@@ -41,10 +41,14 @@ xUnit, Coverlet, HTTP e PostgreSQL/RabbitMQ reais via Testcontainers. Matriz exe
 - T05: API -> proxy/redirecionador -> RabbitMQ e destino local; somente cliente segue Location. Ensaios finais com três nós quorum e dois redirecionadores.
 - Relógio controlado comprova orçamento; tempos reais de publicação/HTTP separados. Verificar métricas e ausência de dados sensíveis.
 
-Desenvolvimento usa testes direcionados; fechamento executa suíte acumulada e regressões compartilhadas. Smoke quando serviços/proxy/observabilidade mudarem. CI evita duplicidade push de branch/PR e cancela execuções obsoletas; mudanças só documentais validam documentos, referenciando medições compatéveis.
+Desenvolvimento usa testes direcionados; fechamento executa suíte acumulada e regressões compartilhadas. Smoke quando serviços/proxy/observabilidade mudarem. CI evita duplicidade push de branch/PR e cancela execuções obsoletas; mudanças só documentais validam documentos, referenciando medições compatíveis. A suíte 004 executa no job dedicado de cobertura; foundation preserva os checks anteriores sem duplicá-la.
 
 ## Evidências e continuidade
 
-Cada tarefa entrega evidence/F004-Txx.md: objetivo, limitações, branch/PR/SHA, comandos/ambiente, testes/cobertura com numeradores e denominadores, rastreabilidade, links CI/artefatos e próximo passo. Execuções usam diretórios próprios e provenance.json com identidade de código, testes, dependências, configurações e ferramentas; não combinar medições incompatéveis. Commit documental referencia SHA funcional anterior sem alegar nova medição.
+Cada tarefa entrega evidence/F004-Txx.md: objetivo, limitações, branch/PR/SHA, comandos/ambiente, testes/cobertura com numeradores e denominadores, rastreabilidade, links CI/artefatos e próximo passo. Execuções usam diretórios próprios e provenance.json com identidade de código, testes, dependências, configurações e ferramentas; não combinar medições incompatíveis. Commit documental referencia SHA funcional anterior sem alegar nova medição.
 
-T06 entrega evidence.md geral auditando sete PRs/parciais, sem somar percentuais. AF-04 comprova identidades; deduplicação/contagem dependem de 005. AF-06 comprova 302; painel depende de 005/006. Implementado/verificado e aceite formal sóo separados: dependências históricas não sóo marcadas artificialmente.
+T06 entrega evidence.md geral auditando sete PRs/parciais, sem somar percentuais. AF-04 comprova identidades; deduplicação/contagem dependem de 005. AF-06 comprova 302; painel depende de 005/006. Implementado/verificado e aceite formal são separados: dependências históricas não são marcadas artificialmente.
+
+## Integração dos PRs já revisados
+
+O usuário integrou T00 na main e, depois, T01/T02 nas branches anteriores em 12/09/2026. Para preservar sete PRs, T03 (#11) tem base main e transporta essas duas entregas já revisadas. Seu gate mede tanto a revisão real contra main quanto a alteração lógica da T03 contra 065902c. T04/T05/T06 seguem encadeadas. Nenhum merge remoto é automático. A situação consolidada consta de [evidence.md](evidence.md).
