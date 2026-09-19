@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Shortener.Redirection.Tests;
 
-[CollectionDefinition("redirection")]
+[CollectionDefinition("redirection", DisableParallelization = true)]
 public sealed class RedirectCollection : ICollectionFixture<Shortener.LinkManagement.Tests.LinkEnvironment>;
 
 public sealed class RedirectHost(Dictionary<string, string?> settings, Action<IServiceCollection>? configure = null)

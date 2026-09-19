@@ -12,6 +12,13 @@ public sealed class RedirectMiddleware(RequestDelegate next)
             await next(context);
             return;
         }
+        var started = Stopwatch.GetTimestamp();
+        try { await RedirectAsync(context, resolver, capture, path); }
+        finally { RedirectTelemetry.Resolved(context.Response.StatusCode, Stopwatch.GetElapsedTime(started).TotalSeconds); }
+    }
+
+    private static async Task RedirectAsync(HttpContext context, IRedirectResolver resolver, AccessCapture capture, string path)
+    {
         context.Response.Headers.CacheControl = "no-store";
         if (path.Length < 2 || path.AsSpan(1).Contains('/'))
         {
@@ -56,7 +63,11 @@ public sealed class RedirectMiddleware(RequestDelegate next)
             await ProblemAsync(context, 410, "gone");
             return;
         }
-        if (HttpMethods.IsGet(context.Request.Method)) await capture.CaptureAsync(context, link);
+        if (HttpMethods.IsGet(context.Request.Method))
+        {
+            RedirectTelemetry.EligibleGet();
+            await capture.CaptureAsync(context, link);
+        }
         context.Response.StatusCode = 302;
         context.Response.Headers.Location = link.Destination;
         context.Response.Headers["Referrer-Policy"] = "no-referrer";

@@ -1,6 +1,6 @@
 # 004 — Redirecionamento e captura
 
-**Estado:** especificado; implementação pendente.
+**Estado:** implementação verificada no escopo 004; consolidação e aprovação formal acompanhadas em [evidence.md](evidence.md). A dependência histórica F003-T05 e os aceites de 005/006 permanecem separados.
 
 ## Objetivo
 

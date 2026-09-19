@@ -11,6 +11,7 @@ public sealed class AccessCapture(TimeProvider clock, ILogger<AccessCapture> log
         var ip = context.Connection.RemoteIpAddress;
         if (ip is null)
         {
+            RedirectTelemetry.CaptureFailed("missing_ip");
             logger.LogWarning("Access capture unavailable ({reason})", "missing_ip");
             return;
         }
@@ -18,19 +19,23 @@ public sealed class AccessCapture(TimeProvider clock, ILogger<AccessCapture> log
         var ticks = clock.GetUtcNow().UtcTicks;
         var envelope = new AccessRecorded(1, Guid.NewGuid(), link.Id.ToString(CultureInfo.InvariantCulture),
             new DateTimeOffset(ticks - ticks % 10, TimeSpan.Zero), ip.ToString());
+        var started = clock.GetTimestamp();
         try
         {
             if (publisher is null)
             {
+                RedirectTelemetry.CaptureFailed("publisher_unavailable");
                 logger.LogWarning("Access capture unavailable ({reason})", "publisher_unavailable");
                 return;
             }
-            await publisher.PublishAsync(envelope, context.RequestAborted);
+            var outcome = await publisher.PublishAsync(envelope, context.RequestAborted);
+            RedirectTelemetry.Published(outcome, clock.GetElapsedTime(started).TotalSeconds);
         }
-        catch (Exception error)
+        catch (Exception)
         {
-            // Exceptions can embed broker credentials or payloads; log only the type.
-            logger.LogWarning("Access capture failed ({errorType})", error.GetType().Name);
+            RedirectTelemetry.CaptureFailed("unexpected");
+            RedirectTelemetry.Published(PublishOutcome.Unknown, clock.GetElapsedTime(started).TotalSeconds);
+            logger.LogWarning("Access capture failed ({errorClass})", "unexpected");
         }
     }
 }
