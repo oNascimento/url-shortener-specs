@@ -1,10 +1,10 @@
 # Tarefas — 005
 
-Todas as tarefas abaixo são da futura implementação e começam pendentes. Marcar conclusão apenas após entregar código/configuração e a evidência descrita. Dependências são IDs globais; `—` significa nenhuma.
+Entrega em um único PR, com checkpoints e evidências por tarefa. Marcar conclusão apenas após entregar código/configuração e a evidência descrita. Dependências são IDs globais; `—` significa nenhuma. A 004 está integrada na main `a403ce0`; seus checkboxes históricos não são alterados por esta entrega.
 
 | Estado | ID | Tarefa | Depende de | Evidência para concluir |
 |---|---|---|---|---|
-| [ ] | F005-T01 | Implementar consumo idempotente, agregação em lote e acknowledgements. | F004-T05 | T11 e T12; falha entre commit e ack não duplica totais. |
+| [x] | F005-T01 | Implementar consumo idempotente, agregação em lote e acknowledgements. | F004-T05 | [Evidência T01](evidence/F005-T01.md): T11/T12 e gates aprovados. |
 | [ ] | F005-T02 | Implementar retry transitório e quarentena com identidade preservada. | F005-T01 | Falhas transitórias pausam sem descartar lote; mensagem inválida não gera total. |
 | [ ] | F005-T03 | Implementar API de estatísticas/eventos e autorização por proprietário. | F005-T02 | T17/T20 e AF-07/13; intervalos UTC, dias zero e precisão corretos. |
 | [ ] | F005-T04 | Implementar monitor da coleta, incidentes e indicação de atraso/desconhecimento. | F005-T03 | T14; fila vazia sem tráfego não implica atraso e último evento não prova completude. |
