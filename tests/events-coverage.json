@@ -1,0 +1,11 @@
+{
+  "description": "F005 complete handwritten files and shared methods. >=95% lines and branches per task and cumulative.",
+  "files": [
+    "src/Shortener.Infrastructure/AccessEnvelope.cs",
+    "src/Shortener.Infrastructure/AccessBatchStore.cs",
+    "src/Shortener.Infrastructure/EventsMigration.cs",
+    "src/Shortener.Worker/AccessConsumer.cs",
+    "src/Shortener.Worker/Program.cs"
+  ],
+  "methods": {}
+}
