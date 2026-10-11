@@ -22,7 +22,8 @@ public sealed class RabbitEnvironment : IAsyncLifetime
         .WithEnvironment("RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS", "+S 2:2")
         .WithPortBinding(5672, true)
         .WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(5672)
-            .UntilCommandIsCompleted("rabbitmq-diagnostics", "-q", "ping")).Build();
+            .UntilCommandIsCompleted("rabbitmq-diagnostics", "-q", "ping")
+            .UntilCommandIsCompleted("rabbitmqctl", "authenticate_user", "test", "integration-only")).Build();
     public Task InitializeAsync() => Container.StartAsync();
     public async Task DisposeAsync() => await Container.DisposeAsync();
 

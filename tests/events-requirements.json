@@ -1,0 +1,55 @@
+{
+  "stage": 1,
+  "taskBases": {},
+  "externalAcceptance": [
+    "Interface: 006; complete deletion: 007; production load, failover and restore: 008."
+  ],
+  "requirements": [
+    {
+      "id": "envelope",
+      "stage": 1,
+      "requirement": "RF-21",
+      "scenarios": [
+        "T10",
+        "T20"
+      ],
+      "tests": [
+        "Shortener.Events.Tests.EnvelopeTests.T10_envelope_is_strict_preserves_identity_microseconds_and_normalizes_ip"
+      ]
+    },
+    {
+      "id": "atomic",
+      "stage": 1,
+      "requirement": "RF-21",
+      "scenarios": [
+        "T11",
+        "T12"
+      ],
+      "tests": [
+        "Shortener.Events.Tests.StoreTests.T11_T12_concurrent_duplicates_commit_replay_and_rollbacks_are_atomic"
+      ]
+    },
+    {
+      "id": "retention-consumption",
+      "stage": 1,
+      "requirement": "RF-22",
+      "scenarios": [
+        "T15"
+      ],
+      "tests": [
+        "Shortener.Events.Tests.StoreTests.T15_T16_expired_deleted_and_missing_links_are_discarded_but_blocked_links_count"
+      ]
+    },
+    {
+      "id": "consumer",
+      "stage": 1,
+      "requirement": "RF-21",
+      "scenarios": [
+        "T11"
+      ],
+      "tests": [
+        "Shortener.Events.Tests.ConsumerTests.T11_consumer_batches_100_GET_identities_and_1000_redeliveries_without_duplicates"
+      ]
+    }
+  ]
+}

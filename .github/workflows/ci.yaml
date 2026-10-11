@@ -32,6 +32,32 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('functional=' + str(functional).lower() + '\n')
           PY
+  events:
+    needs: documents
+    if: needs.documents.outputs.functional == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-dotnet@v4
+        with: {global-json-file: global.json}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: dotnet restore --locked-mode && dotnet build --no-restore -c Debug
+      - name: Task and cumulative events coverage and required scenarios
+        env:
+          EVIDENCE_BASE: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: python scripts/run_events.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: events-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 90
+          path: |
+            artifacts/events/**
+            tests/events-*.json
+            tests/events.runsettings
   redirection:
     needs: documents
     if: needs.documents.outputs.functional == 'true'
@@ -116,9 +142,9 @@ jobs:
       - run: python scripts/build_contract.py && python scripts/validate_deliverables.py && git diff --exit-code -- .specs/contracts/openapi.json
       - run: dotnet restore --locked-mode && dotnet build --no-restore -c Release
       - name: Unit tests
-        run: dotnet test --no-build -c Release --filter 'Category!=Integration&FullyQualifiedName!~Shortener.Redirection.Tests' --logger trx
+        run: dotnet test --no-build -c Release --filter 'Category!=Integration&FullyQualifiedName!~Shortener.Redirection.Tests&FullyQualifiedName!~Shortener.Events.Tests' --logger trx
       - name: Integration tests (PostgreSQL and Mailpit)
-        run: dotnet test --no-build -c Release --filter 'Category=Integration&FullyQualifiedName!~Shortener.Redirection.Tests' --logger trx
+        run: dotnet test --no-build -c Release --filter 'Category=Integration&FullyQualifiedName!~Shortener.Redirection.Tests&FullyQualifiedName!~Shortener.Events.Tests' --logger trx
       - working-directory: web
         run: npm ci && npm run generate && git diff --exit-code -- src/api/schema.d.ts && npm test && npm run build
       - id: local_environment

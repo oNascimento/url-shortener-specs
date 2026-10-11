@@ -70,12 +70,13 @@ def main():
     review = evaluate(reports, review_selected, review_changed, 95) if review_selected['files'] or review_selected['methods'] else None
     requirement_result = requirements(list(args.results.rglob('*.trx')), matrix, min(stage, 5))
     unowned = ownership_errors(changed, added, known_manifests())
+    owned = set(manifest['files']) | set(manifest['methods'])
     passed = not unowned and requirement_result['passed']
     if stage >= 1:
         passed = passed and cumulative is not None and cumulative['passed']
-    if task_changed or task_added:
+    if (set(task_changed) | task_added) & owned:
         passed = passed and task is not None and task['passed']
-    if review_changed or review_added:
+    if (set(review_changed) | review_added) & owned:
         passed = passed and review is not None and review['passed']
     result = {'passed': bool(passed), 'taskId': args.task, 'featureBase': feature_base, 'taskBase': task_base,
               'fingerprint': identity, 'threshold': 95, 'cumulative': cumulative, 'task': task,
